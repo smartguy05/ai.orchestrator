@@ -2,7 +2,7 @@
 The purpose of this application is to orchestrate requests from various services so they can interact with other hosted services
 
 ## Plugins
-Edit .csproj file, add EnableDynamicLoading
+- Edit .csproj file, add EnableDynamicLoading
 
 `<EnableDynamicLoading>true</EnableDynamicLoading>`
 
@@ -30,3 +30,29 @@ Edit .csproj file, add EnableDynamicLoading
         </ProjectReference>
     </ItemGroup>
 </Project>
+
+- Example Plugin Configs
+  - Test_Plugin
+    - {
+    "description": "A plugin to test orchestrator",
+    "contract": {
+    "name": "string",
+    "value": "number"
+    },
+    "testName": "Test Name",
+    "testName2": "Test Name 2"
+    }
+  - Ai.Orchestrator.Plugins.Webhook
+    - {
+      "description": "A plugin for calling configured webhooks",
+      "contract": {
+      "name": "string",
+      "value": "string"
+      },
+      "webhooks": [
+      {
+      "name": "HomeAssistant1",
+      "url": "http://192.168.1.10:3002/api/webhook/-DTXe3XDSZ7AYzo7KtySUJ2sg"
+      }
+      ]
+      }
