@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Webhook;
 
 namespace Ai.Orchestrator.Services;
@@ -17,30 +14,32 @@ public class Orchestrator: IOrchestrator
         _pluginService = pluginService;
     }
 
-    public async Task<List<object>> GetPluginContracts()
+    public Task<List<object>> GetPluginContracts()
     {
-        return await _pluginService.GetPluginContracts();
+        return Task.Run(() => _pluginService.GetPluginContracts());
     }
     
-    public async Task<object> ProcessWebHook(Webhook request)
+    public async Task<object> ProcessRequest(OrchestratorRequest request)
     {
         return await _pluginService.RunPlugin(request);
     }
     
-    public async Task ProcessWebHookChain(IEnumerable<Webhook> requests)
+    public async Task<object> ProcessRequestChain(IEnumerable<OrchestratorRequest> requests)
     {
-        await Task.Run(() =>
+        return await Task.Run(() =>
         {
             var orderedRequests = requests.OrderBy(o => o.Order).ToList();
-            dynamic data = null;
+            object data = null;
             orderedRequests.ForEach(async request =>
             {
                 if (data is not null)
                 {
                     request.Data = data;
                 }
-                data = await ProcessWebHook(request);
+                data = await ProcessRequest(request);
             });
+
+            return data;
         });
     }
 }

@@ -82,3 +82,27 @@ Example Swagger Requests
     "data": null
   }
 ```
+  - Send Email
+```
+{
+  "service": "Ai.Orchestrator.Plugins.Email",
+  "serviceRequest": {
+      "method": "send",
+      "destination": "email@email.com",
+      "subject": "Test Email",
+      "body": "<html><body><h1>Test Email</h1><p>This is a test email</p></body</html>",
+      "sender": "email@email.com"
+    },
+  "data": null
+}
+```
+- Read Email
+```
+{
+  "service": "Ai.Orchestrator.Plugins.Email",
+  "serviceRequest": {
+      "method": "read"
+    },
+  "data": null
+}
+```

@@ -2,7 +2,7 @@
 
 namespace Ai.Orchestrator.Models.Webhook;
 
-public record Webhook : IWebhook
+public record OrchestratorRequest : IWebhook
 {
     public int Order { get; set; }
     public string Service { get; set; }
