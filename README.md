@@ -7,8 +7,8 @@ The purpose of this application is to orchestrate requests from various services
 `<EnableDynamicLoading>true</EnableDynamicLoading>`
 
 - Example csproj settings:
- 
-  - <Project Sdk="Microsoft.NET.Sdk">
+  ```
+  <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -29,44 +29,56 @@ The purpose of this application is to orchestrate requests from various services
             <ExcludeAssets>runtime</ExcludeAssets>
         </ProjectReference>
     </ItemGroup>
-</Project>
+  </Project>
 
 - Example Plugin Configs
   - Test_Plugin
-    - {
-    "description": "A plugin to test orchestrator",
-    "contract": {
-    "name": "string",
-    "value": "number"
-    },
-    "testName": "Test Name",
-    "testName2": "Test Name 2"
+    ```
+    {
+      "description": "A plugin to test orchestrator",
+      "contract": {
+        "name": "string",
+        "value": "number"
+      },
+      "testName": "Test Name",
+      "testName2": "Test Name 2"
     }
   - Ai.Orchestrator.Plugins.Webhook
-    - {
+    ```
+    {
       "description": "A plugin for calling configured webhooks",
       "contract": {
-      "name": "string",
-      "value": "string"
+        "name": "string",
+        "value": "string"
       },
       "webhooks": [
-      {
-      "name": "HomeAssistant1",
-      "url": "http://192.168.1.10:3002/api/webhook/-DTXe3XDSZ7AYzo7KtySUJ2sg"
-      }
+        {
+          "name": "HomeAssistant1",
+          "url": "http://URL/api/webhook/-webhookId"
+        }
       ]
-      }
+    }
 
 Example Swagger Requests
   - webhooks
-    -  {
-       "service": "ai.orchestrator.plugins.webhook",
-       "serviceRequest": { "webhookName": "HomeAssistant1", "Value": "this is a test notification" },
-       "data": null
-       }
+```
+  {
+     "service": "ai.orchestrator.plugins.webhook",
+     "serviceRequest": { 
+      "webhookName": "HomeAssistant1", 
+      "Value": "this is a test notification" 
+      },
+     "data": null
+  }
+ ```
   - test_plugin
-    - {
-      "service": "test_plugin",
-      "serviceRequest": { "name": "Test Name", "Value": 0 },
-      "data": null
-      }
+```
+  {
+    "service": "test_plugin",
+    "serviceRequest": { 
+      "name": "Test Name", 
+      "Value": 0 
+    },
+    "data": null
+  }
+```
