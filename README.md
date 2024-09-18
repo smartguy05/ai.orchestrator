@@ -56,3 +56,17 @@ The purpose of this application is to orchestrate requests from various services
       }
       ]
       }
+
+Example Swagger Requests
+  - webhooks
+    -  {
+       "service": "ai.orchestrator.plugins.webhook",
+       "serviceRequest": { "webhookName": "HomeAssistant1", "Value": "this is a test notification" },
+       "data": null
+       }
+  - test_plugin
+    - {
+      "service": "test_plugin",
+      "serviceRequest": { "name": "Test Name", "Value": 0 },
+      "data": null
+      }
