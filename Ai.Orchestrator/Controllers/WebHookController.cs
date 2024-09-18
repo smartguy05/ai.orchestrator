@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Webhook;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,22 +15,16 @@ public class WebHookController: ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult> ProcessWebHook([FromBody] Webhook request)
+    public async Task<ActionResult> ProcessWebHook([FromBody] OrchestratorRequest request)
     {
-        await _orchestrator.ProcessWebHook(request);
+        await _orchestrator.ProcessRequest(request);
         return Ok();
     }
     
     [HttpPost("chain")]
-    public async Task<ActionResult> ProcessWebHookChain([FromBody] IEnumerable<Webhook> requests)
+    public async Task<ActionResult> ProcessWebHookChain([FromBody] IEnumerable<OrchestratorRequest> requests)
     {
-        await _orchestrator.ProcessWebHookChain(requests);
+        await _orchestrator.ProcessRequestChain(requests);
         return Ok();
-    }
-
-    [HttpGet]
-    public async Task<List<object>> GetAvailablePlugins()
-    {
-        return await _orchestrator.GetPluginContracts();
     }
 }

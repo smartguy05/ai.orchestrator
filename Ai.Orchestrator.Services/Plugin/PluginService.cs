@@ -23,7 +23,7 @@ public class PluginService : IPluginService
         _config = new Config();
     }
 
-    public async Task<List<object>> GetPluginContracts()
+    public List<object> GetPluginContracts()
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())

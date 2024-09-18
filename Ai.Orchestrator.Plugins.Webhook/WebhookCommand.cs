@@ -1,9 +1,5 @@
-﻿using System;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Plugins.Webhook.Models;
@@ -15,7 +11,7 @@ public class WebhookCommand: ICommand
     public string Name => "Webhook";
     public string Description  => "Send a Webhook request";
     
-    public async Task<dynamic> Execute(object request, string configString)
+    public async Task<object> Execute(object request, string configString)
     {
         var serviceRequest = request.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadConfig<ServiceConfig>();

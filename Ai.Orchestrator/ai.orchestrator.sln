@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Common", ".
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Webhook", "..\Ai.Orchestrator.Plugins.Webhook\Ai.Orchestrator.Plugins.Webhook.csproj", "{3B310D0E-D31C-4D48-B0B5-6E47263D9449}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Email", "..\Ai.Orchestrator.Plugins.Email\Ai.Orchestrator.Plugins.Email.csproj", "{D4FD49DB-210B-43AD-9751-1D3E641E4A2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4FD49DB-210B-43AD-9751-1D3E641E4A2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4FD49DB-210B-43AD-9751-1D3E641E4A2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4FD49DB-210B-43AD-9751-1D3E641E4A2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4FD49DB-210B-43AD-9751-1D3E641E4A2C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

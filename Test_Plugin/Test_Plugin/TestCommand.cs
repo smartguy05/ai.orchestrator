@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Common.Extensions;
 
 namespace Test_Plugin;
@@ -36,7 +34,7 @@ public class TestCommand : ICommand
     //     return Task.FromResult(Task.FromResult((object)0));
     // }
     
-    public async Task<object> Execute(object request, string configString)
+    public Task<object> Execute(object request, string configString)
     {
         var args = request.GetServiceRequest<TestClass>();
         var config = configString.ReadConfig<TestConfig>();
@@ -56,7 +54,7 @@ public class TestCommand : ICommand
         Console.WriteLine($"TestName: {config.TestName}");
         Console.WriteLine($"TestName2: {config.TestName2}");
 
-        return Task.FromResult(Task.FromResult((object)0));
+        return Task.FromResult((object)0);
     }
 }
 

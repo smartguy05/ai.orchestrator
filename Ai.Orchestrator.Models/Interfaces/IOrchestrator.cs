@@ -1,11 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-
+﻿
 namespace Ai.Orchestrator.Models.Interfaces;
 
 public interface IOrchestrator
 {
-    public Task<object> ProcessWebHook(Webhook.Webhook request);
-    public Task ProcessWebHookChain(IEnumerable<Webhook.Webhook> requests);
+    public Task<object> ProcessRequest(Webhook.OrchestratorRequest request);
+    public Task<object> ProcessRequestChain(IEnumerable<Webhook.OrchestratorRequest> requests);
     Task<List<object>> GetPluginContracts();
 }
