@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator", "Ai.Orchestrator.csproj", "{2F86464C-CA42-4F21-8A00-0C150FD6C160}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Models", "..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj", "{1AAEDB1D-8CA3-46EE-8BD8-7F35FF6EF24C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Services", "..\Ai.Orchestrator.Services\Ai.Orchestrator.Services.csproj", "{9EDE7381-8A63-4D5D-90DA-F99BB4CED964}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test_Plugin", "..\Test_Plugin\Test_Plugin\Test_Plugin.csproj", "{BAF99B4C-BB58-43A9-9A98-544B2D63DAF9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Common", "..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj", "{2BCDF0B9-8F86-4D19-8BAB-969163EF096F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Webhook", "..\Ai.Orchestrator.Plugins.Webhook\Ai.Orchestrator.Plugins.Webhook.csproj", "{3B310D0E-D31C-4D48-B0B5-6E47263D9449}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2F86464C-CA42-4F21-8A00-0C150FD6C160}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F86464C-CA42-4F21-8A00-0C150FD6C160}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F86464C-CA42-4F21-8A00-0C150FD6C160}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F86464C-CA42-4F21-8A00-0C150FD6C160}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AAEDB1D-8CA3-46EE-8BD8-7F35FF6EF24C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AAEDB1D-8CA3-46EE-8BD8-7F35FF6EF24C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AAEDB1D-8CA3-46EE-8BD8-7F35FF6EF24C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AAEDB1D-8CA3-46EE-8BD8-7F35FF6EF24C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9EDE7381-8A63-4D5D-90DA-F99BB4CED964}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9EDE7381-8A63-4D5D-90DA-F99BB4CED964}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9EDE7381-8A63-4D5D-90DA-F99BB4CED964}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9EDE7381-8A63-4D5D-90DA-F99BB4CED964}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAF99B4C-BB58-43A9-9A98-544B2D63DAF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAF99B4C-BB58-43A9-9A98-544B2D63DAF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAF99B4C-BB58-43A9-9A98-544B2D63DAF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAF99B4C-BB58-43A9-9A98-544B2D63DAF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BCDF0B9-8F86-4D19-8BAB-969163EF096F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BCDF0B9-8F86-4D19-8BAB-969163EF096F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BCDF0B9-8F86-4D19-8BAB-969163EF096F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BCDF0B9-8F86-4D19-8BAB-969163EF096F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B310D0E-D31C-4D48-B0B5-6E47263D9449}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
