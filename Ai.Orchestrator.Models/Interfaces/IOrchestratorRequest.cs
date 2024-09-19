@@ -1,6 +1,6 @@
 ﻿namespace Ai.Orchestrator.Models.Interfaces;
 
-public interface IWebhook
+public interface IOrchestratorRequest
 {
     public string Service { get; set; }
     public object ServiceRequest { get; set; }

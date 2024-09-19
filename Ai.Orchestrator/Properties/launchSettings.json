@@ -19,7 +19,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "PluginDirectory": "Plugins",
         "ConfigDirectory": "Configs",
-        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email"
+        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos"
       }
     },
     "https": {

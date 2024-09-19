@@ -61,7 +61,7 @@ public class PluginService : IPluginService
         return configs;
     }
 
-    public async Task<object> RunPlugin(IWebhook request)
+    public async Task<object> RunPlugin(IOrchestratorRequest request)
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
