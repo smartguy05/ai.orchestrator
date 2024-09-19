@@ -16,11 +16,12 @@ builder.Services
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+// todo: re-enable after implementing web admin
+// if (app.Environment.IsDevelopment())
+// {
     app.UseSwagger()
         .UseSwaggerUI();
-}
+// }
 
 app.UseHttpLogging()
     .UseHttpsRedirection()
