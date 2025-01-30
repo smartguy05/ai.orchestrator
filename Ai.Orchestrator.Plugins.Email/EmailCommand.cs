@@ -1,4 +1,5 @@
-﻿using Ai.Orchestrator.Common.Extensions;
+﻿using System.Text.Json;
+using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
@@ -17,7 +18,12 @@ public class EmailCommand: ICommand
 
     public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest as ServiceRequest;
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+        var serviceRequest = JsonSerializer.Deserialize<ServiceRequest>((string)request.ServiceRequest, options);
         var config = configString.ReadConfig<ServiceConfig>();
 
         if (serviceRequest is null)
@@ -25,13 +31,13 @@ public class EmailCommand: ICommand
             throw new Exception("Unable to read email service request");
         }
         
-        if (!string.Equals(serviceRequest.Method, "read", StringComparison.InvariantCultureIgnoreCase) &&
-            !string.Equals(serviceRequest.Method, "send", StringComparison.InvariantCultureIgnoreCase))
+        if (!string.Equals(serviceRequest.Method, "get_email", StringComparison.InvariantCultureIgnoreCase) &&
+            !string.Equals(serviceRequest.Method, "send_email", StringComparison.InvariantCultureIgnoreCase))
         {
             throw new Exception("Invalid email method specified");
         }
 
-        if (string.Equals(serviceRequest.Method, "read", StringComparison.InvariantCultureIgnoreCase))
+        if (string.Equals(serviceRequest.Method, "get_email", StringComparison.InvariantCultureIgnoreCase))
         {
             var mail = (await GetEmail(serviceRequest, config)).ToList();
             if (!string.IsNullOrWhiteSpace(serviceRequest.SearchSubject))
@@ -42,10 +48,18 @@ public class EmailCommand: ICommand
                     .ToList();
             }
 
+            if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+            {
+                return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, mail);
+            }
             return mail;
         }
             
         var success = SendEmail(serviceRequest, config);
+        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+        {
+            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
+        }
         return Task.FromResult((object)new
         {
             Success = success
