@@ -1,5 +1,7 @@
 ﻿using Ai.Orchestrator.Common.Extensions;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
+using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Email.Models;
 using MailKit;
 using MailKit.Net.Imap;
@@ -13,10 +15,15 @@ public class EmailCommand: ICommand
     public string Name => "Email";
     public string Description => "Send/Read email";
 
-    public async Task<object> Execute(object request, string configString)
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.GetServiceRequest<ServiceRequest>();
+        var serviceRequest = request.ServiceRequest as ServiceRequest;
         var config = configString.ReadConfig<ServiceConfig>();
+
+        if (serviceRequest is null)
+        {
+            throw new Exception("Unable to read email service request");
+        }
         
         if (!string.Equals(serviceRequest.Method, "read", StringComparison.InvariantCultureIgnoreCase) &&
             !string.Equals(serviceRequest.Method, "send", StringComparison.InvariantCultureIgnoreCase))

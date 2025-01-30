@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.IO;
-using System.Linq;
+﻿using System.Dynamic;
 using System.Reflection;
 using System.Text.Json;
-using System.Threading.Tasks;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Configuration;
 using Ai.Orchestrator.Models.Interfaces;
-using Microsoft.Extensions.Logging;
+using Ai.Orchestrator.Models.Tools;
 
 namespace Ai.Orchestrator.Services.Plugin;
 
@@ -23,7 +19,7 @@ public class PluginService : IPluginService
         _config = new Config();
     }
 
-    public List<object> GetPluginContracts()
+    public List<ToolCall> GetTools()
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
@@ -31,7 +27,47 @@ public class PluginService : IPluginService
             throw new Exception("Unable to find any plugins");
         }
 
-        var configs = new List<object>();
+        var configs = new List<ToolCall>();
+        foreach (var plugin in plugins)
+        {
+            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
+            if (config is not null)
+            {
+                using JsonDocument doc = JsonDocument.Parse(config);
+                var element = doc.RootElement;
+                var expando = element.Deserialize<ExpandoObject>();
+                var dictionary = (IDictionary<string, object>)expando;
+
+                if (dictionary.TryGetValue("tools", out var value))
+                {
+                    if (((JsonElement)value).ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in ((JsonElement)value).EnumerateArray())
+                        {
+                            configs.Add(JsonSerializer.Deserialize<ToolCall>(item, new JsonSerializerOptions{ PropertyNameCaseInsensitive = true}));
+                        }
+                    }
+                    else
+                    {
+                        var toolCall = JsonSerializer.Deserialize<ToolCall>((JsonElement)value);
+                        configs.Add(toolCall);
+                    }
+                }
+            }
+        }
+
+        return configs;
+    }
+    
+    public Dictionary<string, IEnumerable<string>> GetPluginContracts()
+    {
+        var plugins = _config.ActivePlugins.Split(",");
+        if (!plugins.Any())
+        {
+            throw new Exception("Unable to find any plugins");
+        }
+
+        var configs = new Dictionary<string, IEnumerable<string>>();
         foreach (var plugin in plugins)
         {
             var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
@@ -42,18 +78,10 @@ public class PluginService : IPluginService
                 var expando = element.Deserialize<ExpandoObject>();
                 var dictionary = (IDictionary<string, object>)expando;
                 
-                if (dictionary.TryGetValue("contract", out var value))
+                if (dictionary.TryGetValue("toolFunctions", out var value))
                 {
-                    if (dictionary.TryGetValue("description", out var description))
-                    {
-                        var configObject = new
-                        {
-                            plugin,
-                            description,
-                            contract = value
-                        };
-                        configs.Add(configObject);
-                    }
+                    var functions = ((JsonElement)value).EnumerateArray().Select(s => s.GetString()).ToList();   
+                    configs.Add(plugin, functions);
                 }
             }
         }
@@ -61,7 +89,7 @@ public class PluginService : IPluginService
         return configs;
     }
 
-    public async Task<object> RunPlugin(IOrchestratorRequest request)
+    public async Task<object> RunPlugin(OrchestratorRequest request)
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
@@ -86,7 +114,7 @@ public class PluginService : IPluginService
             _logger.LogInformation($"-- Total Commands: {commands.Count} --");
             foreach (var command in commands)
             {
-                tasks.Add(command?.Execute(request.ServiceRequest, config));
+                tasks.Add(command?.Execute(request, config, GetTools()));
                 _logger.LogInformation($"-- Command {command.Name} Started --");
             }
             var results = (await Task.WhenAll(tasks)).ToList();
