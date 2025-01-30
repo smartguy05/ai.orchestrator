@@ -1,5 +1,7 @@
 ﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Common.Extensions;
+using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Tools;
 
 namespace Test_Plugin;
 
@@ -34,16 +36,17 @@ public class TestCommand : ICommand
     //     return Task.FromResult(Task.FromResult((object)0));
     // }
     
-    public Task<object> Execute(object request, string configString)
+    public Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var args = request.GetServiceRequest<TestClass>();
+        var args = request.ServiceRequest as TestClass;
+        // var args = request.GetServiceRequest<TestClass>();
         var config = configString.ReadConfig<TestConfig>();
 
         Console.WriteLine("TEST SUCCESSFUL!!!");
         if (args is not null)
         {
-           Console.WriteLine($"Arg Name: {args.Name}");
-           Console.WriteLine($"Arg Value: {args.Value}");
+            Console.WriteLine($"Arg Name: {args.Name}");
+            Console.WriteLine($"Arg Value: {args.Value}");
         }
         else
         {
@@ -66,8 +69,11 @@ public class TestClass
 
 public class TestConfig: IPluginConfig
 {
+    public string Name { get; set; }
     public object Contract { get; set; }
     public string Description { get; set; }
+    public IEnumerable<ToolCall> Tools { get; set; }
+    public IEnumerable<string> ToolFunctions { get; set; }
     public string TestName { get; set; }
     public string TestName2 { get; set; }
 }

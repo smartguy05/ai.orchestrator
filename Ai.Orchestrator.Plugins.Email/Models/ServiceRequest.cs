@@ -1,8 +1,12 @@
-﻿namespace Ai.Orchestrator.Plugins.Email.Models;
+﻿using Ai.Orchestrator.Models.Interfaces;
 
-public record ServiceRequest
+namespace Ai.Orchestrator.Plugins.Email.Models;
+
+public record ServiceRequest: IPluginServiceRequest
 {
     public string Method { get; set; }
+    public string ToolCallId { get; set; }
+    public string RequestingService { get; set; }
     public string Account { get; set; }
     public string RecipientName { get; set; }
     public string Destination { get; set; }

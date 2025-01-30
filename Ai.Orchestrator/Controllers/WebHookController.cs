@@ -1,7 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
-using Ai.Orchestrator.Models.Webhook;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ai.Orchestrator.Controllers;
