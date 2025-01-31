@@ -1,3 +1,9 @@
+Future planned features:
+- **TaskScheduler**: Manages scheduling for future AI tasks
+- **TaskManager**: Handles creation, monitoring, and execution of tasks
+- **EventWatcher**: Performs an AI task when a specified event occurs
+- **EventScheduler**: Handles creation, monitoring, and lifecycles of Event Watchers
+
 **Below is auto-generated documentation created by ChatGPT, it has not been review yet for accuracy**
 
 # Ai.Orchestrator
