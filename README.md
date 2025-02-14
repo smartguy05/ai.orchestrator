@@ -1,6 +1,11 @@
 # Ai.Orchestrator
 The purpose of this application is to orchestrate requests from various services so they can interact with other hosted services
 
+## Future Development
+- Chat memory
+- RAG
+- Users
+
 ## Plugins
 - Edit .csproj file, add EnableDynamicLoading
 
