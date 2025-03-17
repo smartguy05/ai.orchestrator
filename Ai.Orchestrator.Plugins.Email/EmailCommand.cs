@@ -7,6 +7,7 @@ using Ai.Orchestrator.Plugins.Email.Models;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Net.Smtp;
+using MailKit.Search;
 using MimeKit;
 
 namespace Ai.Orchestrator.Plugins.Email;
@@ -30,40 +31,55 @@ public class EmailCommand: ICommand
         {
             throw new Exception("Unable to read email service request");
         }
-        
-        if (!string.Equals(serviceRequest.Method, "get_email", StringComparison.InvariantCultureIgnoreCase) &&
-            !string.Equals(serviceRequest.Method, "send_email", StringComparison.InvariantCultureIgnoreCase))
-        {
-            throw new Exception("Invalid email method specified");
-        }
 
-        if (string.Equals(serviceRequest.Method, "get_email", StringComparison.InvariantCultureIgnoreCase))
+        switch (serviceRequest.Method.ToLower())
         {
-            var mail = (await GetEmail(serviceRequest, config)).ToList();
-            if (!string.IsNullOrWhiteSpace(serviceRequest.SearchSubject))
+            case "get_email":
             {
-                mail = mail
-                    .Where(w =>
-                        w.Subject.Contains(serviceRequest.SearchSubject, StringComparison.InvariantCultureIgnoreCase))
-                    .ToList();
-            }
+                var mail = (await GetEmail(serviceRequest, config)).ToList();
+                if (!string.IsNullOrWhiteSpace(serviceRequest.SearchSubject))
+                {
+                    mail = mail
+                        .Where(w =>
+                            w.Subject.Contains(serviceRequest.SearchSubject, StringComparison.InvariantCultureIgnoreCase))
+                        .ToList();
+                }
 
-            if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-            {
-                return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, mail);
+                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+                {
+                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, mail);
+                }
+                return mail;
             }
-            return mail;
+            case "send_email":
+            {
+                var success = await SendEmail(serviceRequest, config);
+                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+                {
+                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
+                }
+                return Task.FromResult((object)new
+                {
+                    Success = success
+                });
+            }
+            case "delete_email":
+            {
+                var success = await DeleteEmail(serviceRequest, config);
+                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+                {
+                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
+                }
+                return Task.FromResult((object)new
+                {
+                    Success = success
+                });
+            }
+            default:
+            {
+                throw new Exception("Invalid email method specified");
+            }
         }
-            
-        var success = SendEmail(serviceRequest, config);
-        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-        {
-            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
-        }
-        return Task.FromResult((object)new
-        {
-            Success = success
-        });
     }
 
     private EmailParameters GetMailAccount(ServiceRequest request, ServiceConfig config)
@@ -118,6 +134,51 @@ public class EmailCommand: ICommand
         return true;
     }
 
+    private async Task<int> DeleteEmail(ServiceRequest request, ServiceConfig config)
+    {
+        var mailAccount = GetMailAccount(request, config);
+        int deletedCount = 0;
+
+        using var client = new ImapClient();
+        try
+        {
+            await client.ConnectAsync(mailAccount.Imap, mailAccount.ImapPort, mailAccount.UseSsl);
+            await client.AuthenticateAsync(mailAccount.Username, mailAccount.Password);
+            
+            Console.WriteLine($"Mail account {mailAccount.Username} authenticated");
+            
+            await client.Inbox.OpenAsync(FolderAccess.ReadWrite);
+            
+            // Delete emails by MessageId using HeaderContains
+            if (string.IsNullOrWhiteSpace(request.MessageId))
+            {
+                throw new Exception("MessageId is required to delete emails");
+            }
+
+            var uids = await client.Inbox.SearchAsync(SearchOptions.All, SearchQuery.HeaderContains("Message-Id", request.MessageId));
+            foreach (var uid in uids.UniqueIds)
+            {
+                await client.Inbox.AddFlagsAsync(uid, MessageFlags.Deleted, true);
+                deletedCount++;
+            }
+
+            await client.Inbox.ExpungeAsync();
+            
+            Console.WriteLine($"{deletedCount} email(s) deleted");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error deleting email: {e.Message}");
+            throw;
+        }
+        finally
+        {
+            client.Disconnect(true);
+        }
+
+        return deletedCount;
+    }
+    
     private async Task<IEnumerable<MailMessage>> GetEmail(ServiceRequest request, ServiceConfig config)
     {
         var mailAccount = GetMailAccount(request, config);

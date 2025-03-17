@@ -73,7 +73,122 @@ public class EmailClientSetting
 - **AuthType**: Allows specifying the authentication method (if needed).
 - **Timeout**: Connection timeout in milliseconds.
 
-> **Note**: You can store these settings in an appsettings.json or environment variables, and load them at runtime using your configuration manager of choice.
+> **Note**: These settings should be stored in the Configs folder and be named the same as the plugin. Eg. Ai.Orchestrator.Plugins.Email.json
+Example Email Config File
+```json
+{
+   "name": "email",
+   "description": "A plugin to interact with email via smtp and imap",
+   "tools": [
+      {
+         "type": "function",
+         "function": {
+            "name": "get_email",
+            "description": "Use this function to read emails from the user's already set up email account, for example when asked something like 'Who sent that last email?', or 'When did I get that email from Google'",
+            "parameters": {
+               "type": "object",
+               "properties": {
+                  "account": {
+                     "type": "string",
+                     "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+                  },
+                  "searchSubject": {
+                     "type": "string",
+                     "description": "The subject of the email to search for. This is optional."
+                  }
+               },
+               "required": []
+            }
+         }
+      },
+      {
+         "type": "function",
+         "function": {
+            "name": "send_email",
+            "description": "Use this function to send emails from the user's already set up email account, for example when asked something like 'Send an email to mom telling her I will be late'",
+            "parameters": {
+               "type": "object",
+               "properties": {
+                  "account": {
+                     "type": "string",
+                     "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+                  },
+                  "destination": {
+                     "type": "string",
+                     "description": "The email address to send the email to. This MUST be a valid email address."
+                  },
+                  "subject": {
+                     "type": "string",
+                     "description": "The subject of the email to send."
+                  },
+                  "body": {
+                     "type": "string",
+                     "description": "The HTML formatted body of the email to send."
+                  },
+                  "sender": {
+                     "type": "string",
+                     "description": "The name of the person that sent the email. If left empty the default value stored in settings will be used."
+                  }
+               },
+               "required": ["destination", "subject", "body"]
+            }
+         }
+      },
+      {
+         "type": "function",
+         "function": {
+            "name": "delete_email",
+            "description": "Use this function to delete emails from the user's already set up email account, for example when asked something like 'delete that email', or 'delete my last email'",
+            "parameters": {
+               "type": "object",
+               "properties": {
+                  "account": {
+                     "type": "string",
+                     "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+                  },
+                  "messageId": {
+                     "type": "string",
+                     "description": "The message Id of the email message to delete"
+                  }
+               },
+               "required": [
+                  "messageId"
+               ]
+            }
+         }
+      }
+   ],
+   "toolFunctions": [
+      "send_email",
+      "get_email",
+      "delete_email"
+   ],
+   "contract": {
+      "method": "read,send",
+      "account": "string?",
+      "destination": "string?",
+      "subject": "string?",
+      "body": "string?",
+      "sender": "string?",
+      "searchSubject": "string?"
+   },
+   "emailAccounts": [
+      {
+         "name": "main",
+         "displayName": "Display name to show in email",
+         "default": true,
+         "imap": "imap.server.com",
+         "imapPort": 993,
+         "smtp": "smtp.server.com",
+         "smtpPort": 465,
+         "username": "email@server.com",
+         "email": "email@server.com",
+         "password": "password",
+         "useSsl": true
+      }
+   ]
+}
+```
 
 ---
 
