@@ -107,22 +107,7 @@ Ai.Orchestrator
 
 ### Configuration
 
-Depending on how your project is set up, you may use `appsettings.json` or environment variables to configure logging, database connections, or other settings. For example:
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Ai.Orchestrator": "Debug"
-    }
-  },
-  "OrchestratorSettings": {
-    "MaxConcurrentTasks": 5,
-    "RetryCount": 3
-  }
-}
-```
+Configuration is handled by each plugin with a json file in the Configs Folder~~~~
 
 ### Running the Orchestrator
 
