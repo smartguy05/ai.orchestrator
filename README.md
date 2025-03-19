@@ -8,7 +8,6 @@ handling email and webhook requests. The service is extensible using plugins.
 - [Overview](#overview)
 - [Features](#features)
 - [Plugins](#plugins)
-  - [Example Workflow](example-process-using-plugins)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
