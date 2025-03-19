@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+	</PropertyGroup>
+
+	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+	  <OutputPath>..\Ai.Orchestrator\bin\Debug\net7.0\Plugins\</OutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Reference Include="Ai.Orchestrator.Common">
+		  <HintPath>..\..\ai.orchestrator\Ai.Orchestrator.Common\bin\Debug\net7.0\Ai.Orchestrator.Common.dll</HintPath>
+			<PrivateAssets>none</PrivateAssets>
+		</Reference>
+		<Reference Include="Ai.Orchestrator.Models">
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</Reference>
+		<Reference Include="OpenAI">
+		  <HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\OpenAI.dll</HintPath>
+		</Reference>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
+	  <PackageReference Include="System.ClientModel" Version="1.2.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
+	  <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
+	</ItemGroup>
+</Project>

@@ -1,15 +1,7 @@
-Future planned features:
-~~- **Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
-- **TaskScheduler**: Manages scheduling for future AI tasks
-- **TaskManager**: Handles creation, monitoring, and execution of tasks
-- **EventWatcher**: Performs an AI task when a specified event occurs
-- **EventScheduler**: Handles creation, monitoring, and lifecycles of Event Watchers
-
-**Below is auto-generated documentation created by ChatGPT, it has not been review yet for accuracy**
-
 # Ai.Orchestrator
 
-**Ai.Orchestrator** is a .NET library (or service) designed to orchestrate AI-related tasks such as prompt management, job scheduling, model selection, and more. It simplifies how AI workflows are defined, executed, and monitored in distributed environments.
+**Ai.Orchestrator** is a service designed to orchestrate AI-related tasks. There are built-in plugins for 
+handling email and webhook requests. The service is extensible using plugins.
 
 ## Table of Contents
 
@@ -36,23 +28,76 @@ Future planned features:
 
 **Ai.Orchestrator** acts as a central controller for different AI-related tasks:
 
-- **Task Scheduling**: Automate scheduling of jobs (e.g., data preprocessing, model inference).
-- **Workflow Orchestration**: Define sequences of tasks that can be run asynchronously or in parallel.
-- **Prompt Management**: Manage AI prompts or pipeline steps for large language models (LLMs).
+- **Email**: Read, Send, and Delete emails for the configured email address.
+- **Webhook**: Webhook interface for api.
+- **OpenAI**: OpenAI API integration. Can be configured to use a local OpenAI compliant API.
 - **Plugin/Module Integration**: Easily integrate external modules for additional functionality (logging, notifications, etc.).
+
+Planned:
+
+- (Complete) ~~**Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
+- **Task Scheduler**: Manages scheduling for future AI tasks
+- **Task Manager**: Handles creation, monitoring, and execution of tasks
+- **Event Watcher**: Performs an AI task when a specified event occurs
+- **Event Scheduler**: Handles creation, monitoring, and lifecycles of Event Watchers
 
 ## Features
 
 - **Modular Architecture**: Add or remove AI-related modules without disrupting the entire system.
 - **Pluggable Components**: Swap out scheduling, storage, or model inference modules via configurations.
-- **Scalable Execution**: Capable of running many tasks in parallel, with robust error handling and logging.
-- **Configurable**: Central configuration for logging, environment variables, and resource usage.
+- **Configurable**: Plugins are configurable by their own config json files
+
+## Plugins
+
+**Ai.Orchestrator** is extensible using plugins placed into the plugins directory as specified in the environment 
+variable or launchSettings.json. Plugins should expose an ICommand object which accepts an OrchestratorRequest,
+a string containing the json value of the configuration for the plugin, and a list of available tool calls 
+which are populated by Orchestrator from the plugin configs. Each plugin can return either an object as a return 
+result or another OrchestratorRequest so that more actions may be taken. Using this method a series of commands 
+can be made to perform a complex action.
+
+### **Example:**
+
+NOTE: This example is using the TextController endpoint
+1. User Request: "Respond to my last email, ask them when we can meet up."
+2. The request is passed to the OpenAI compliant API along with a list of the available tool functions.
+3. The API responds with a tool call to perform, "get_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
+4. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
+5. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to get the requested email.
+6. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator.
+7. Orchestrator sees that the~~~~ requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
+8. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
+9. The API responds with a new tool call to perform, "send_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
+10. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
+11. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to send the requested email. 
+12. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator with a true (email sent) or false (didn't send) value.
+13. Orchestrator sees that the requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
+14. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
+15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not. 
+
+Example Request:
+```
+{
+  "userPrompt": "Respond to my last email. Ask them about meeting up on Friday.",
+  "systemPrompt": "You are a helpful assistant. Your job is to help me with handling emails.",
+  "conversationId": null
+}
+```
+*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can you to do multi-shot prompting instead of single shot as shown in this example*
+
+Example Successful Response:
+```
+{
+  "conversationId": "da8a5ffd-7a1e-4abe-8c07-6399e130c21d",
+  "result": "I have sent the reply to Jordan Reynolds requesting a meeting on Friday."
+}
+```
 
 ## Getting Started
 
 ### Prerequisites
 
-- **.NET 6+** (or whichever version your project supports)
+- **.NET 7+** (or whichever version your project supports)
 - A modern **IDE** or text editor (e.g., Visual Studio, Rider, VS Code)
 - Basic knowledge of C# and .NET Core
 
@@ -77,137 +122,36 @@ Future planned features:
    ```bash
    dotnet build
    ```
+### Running the Orchestrator
+`dotnet run`
 
 ---
 
 ## Usage
 
-### Project Structure
+- **Orchestrator.cs**: The main service class that orchestrates different tasks and modules.
 
-Below is a simplified view of the project structure. Folders and files may vary as development continues.
-
-```
-Ai.Orchestrator
-├── Ai.Orchestrator.csproj
-├── Program.cs
-├── Orchestrator
-│   ├── OrchestratorService.cs
-│   ├── TaskScheduler.cs
-│   ├── TaskManager.cs
-│   └── ...
-├── Modules
-│   ├── PromptModule.cs
-│   ├── ...
-└── README.md
-```
-
-- **OrchestratorService.cs**: The main service class that orchestrates different tasks and modules.
+PLANNED (2025)
 - **TaskScheduler.cs**: Manages scheduling for AI tasks.
 - **TaskManager.cs**: Handles creation, monitoring, and execution of tasks.
-- **Modules**: Houses different AI modules (prompt management, model inference, etc.).
 
-### Configuration
+## Configuration
 
-Configuration is handled by each plugin with a json file in the Configs Folder~~~~
-
-### Running the Orchestrator
-
-If this is a **console app** or **service**, you can run:
-
-```bash
-dotnet run --project Ai.Orchestrator.csproj
+Configuration is handled by environment variables or launchSettings.json 
+```
+   "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PluginDirectory": "Plugins",
+        "ConfigDirectory": "Configs",
+        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi"
+      }
 ```
 
-- The service starts and listens for incoming tasks, scheduling them as configured.
-- If you have a web-based API or endpoints, it may also listen on a specified port (configured in `appsettings.json` or environment variables).
+Plugin configuration is handled by each plugin with json files in the ConfigDirectory location
 
 ---
 
-## Examples
-
-### Using the Orchestrator in a .NET Application
-
-1. **Add Reference**  
-   In your `.csproj` of the consuming project:
-   ```xml
-   <ItemGroup>
-     <ProjectReference Include="..\Ai.Orchestrator\Ai.Orchestrator.csproj" />
-   </ItemGroup>
-   ```
-
-2. **Initialize the Orchestrator**
-   ```csharp
-   using Ai.Orchestrator;
-   using Ai.Orchestrator.Orchestrator;
-
-   // ...
-   var orchestratorService = new OrchestratorService();
-   orchestratorService.Start();
-
-   // Schedule a new AI job
-   orchestratorService.ScheduleTask(() => {
-       // your AI logic or an inference call
-       Console.WriteLine("Running AI Task...");
-   });
-   ```
-
-3. **Stop the Orchestrator** (e.g., on application shutdown):
-   ```csharp
-   orchestratorService.Stop();
-   ```
-
-### Command-Line Usage (If Applicable)
-
-If your orchestrator exposes CLI commands, you might have something like:
-
-```bash
-dotnet Ai.Orchestrator.dll --help
-
-Commands:
-  start       Start the orchestrator service
-  stop        Stop the orchestrator service
-  schedule    Schedule a new AI task
-```
-
----
-
-## Extending Ai.Orchestrator
-
-### Custom Modules
-
-To add a custom module (e.g., for specialized prompt engineering or logging):
-
-1. **Create a new module class** in `Modules/`:
-   ```csharp
-   namespace Ai.Orchestrator.Modules
-   {
-       public class CustomModule : IModule
-       {
-           public void Initialize()
-           {
-               // Initialization logic
-           }
-
-           public void Execute()
-           {
-               // Execution logic
-           }
-       }
-   }
-   ```
-
-2. **Register the module** within `OrchestratorService.cs` or similar:
-   ```csharp
-   public void Start()
-   {
-       var customModule = new CustomModule();
-       moduleRegistry.Add(customModule);
-       customModule.Initialize();
-       // ...
-   }
-   ```
-
-### Contributing
+## Contributing
 
 1. **Fork** the repository
 2. **Create a new branch** (`feature/xyz`)
@@ -223,5 +167,3 @@ We welcome bug reports, feature requests, and pull requests from the community!
 This repository is licensed under the [MIT License](LICENSE). Feel free to use and modify this project in accordance with the terms of the license.
 
 ---
-
-> **Note**: Always keep the documentation up to date with the latest features and code changes. If you have any additional details or domain-specific knowledge about Ai.Orchestrator (e.g., integration with specific AI models or third-party APIs), add them to the relevant sections to help users get the most out of your project.
