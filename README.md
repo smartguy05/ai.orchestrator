@@ -32,6 +32,9 @@ handling email and webhook requests. The service is extensible using plugins.
 Planned:
 
 - (Complete) ~~**Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
+- **Long-term chat memory**: Remember details about the user to help with context in future requests
+- **RAG**: Add RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb) (soon to be made open source)
+- **Request Security**: Validate user or use different configs based on user
 - **Task Scheduler**: Manages scheduling for future AI tasks
 - **Task Manager**: Handles creation, monitoring, and execution of tasks
 - **Event Watcher**: Performs an AI task when a specified event occurs
