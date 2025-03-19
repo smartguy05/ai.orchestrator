@@ -32,8 +32,10 @@ handling email and webhook requests. The service is extensible using plugins.
 Planned:
 
 - (Complete) ~~**Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
-- **Long-term chat memory**: Remember details about the user to help with context in future requests
+- **Request Stream**: Use stream to allow updating periodically to the user
+- **File Upload**: Allow file upload for context/plugin purposes
 - **RAG**: Add RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb) (soon to be made open source)
+- **Long-term chat memory**: Remember details about the user to help with context in future requests
 - **Request Security**: Validate user or use different configs based on user
 - **Task Scheduler**: Manages scheduling for future AI tasks
 - **Task Manager**: Handles creation, monitoring, and execution of tasks
@@ -67,19 +69,33 @@ NOTE: This example is using the TextController endpoint
 }
 ```
 *conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can use to do multi-shot prompting instead of single shot as shown in this example*
+
 2. The request is passed to the OpenAI compliant API along with a list of the available tool functions.
+
 3. The API responds with a tool call to perform, "get_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
+
 4. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
+
 5. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to get the requested email.
+
 6. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator.
+
 7. Orchestrator sees that the~~~~ requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
+
 8. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
+
 9. The API responds with a new tool call to perform, "send_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
+
 10. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
+
 11. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to send the requested email.
+
 12. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator with a true (email sent) or false (didn't send) value.
+
 13. Orchestrator sees that the requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
+
 14. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
+
 15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not:
 ```
 {~~~~
