@@ -92,6 +92,7 @@ NOTE: This example is using the TextController endpoint
 - **.NET 7+** (or whichever version your project supports)
 - A modern **IDE** or text editor (e.g., Visual Studio, Rider, VS Code)
 - Basic knowledge of C# and .NET Core
+- Instance of Redis running (I use docker desktop on Windows)
 
 ### Installation
 
@@ -174,7 +175,7 @@ NOTE: This example is using the TextController endpoint
                   "description": "A test description value"
                 }
               },
-              "required": []
+              "required": []~~~~
             } 
           }
         }
