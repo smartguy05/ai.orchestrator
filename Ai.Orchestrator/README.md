@@ -1,4 +1,5 @@
 Future planned features:
+~~- **Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
 - **TaskScheduler**: Manages scheduling for future AI tasks
 - **TaskManager**: Handles creation, monitoring, and execution of tasks
 - **EventWatcher**: Performs an AI task when a specified event occurs
