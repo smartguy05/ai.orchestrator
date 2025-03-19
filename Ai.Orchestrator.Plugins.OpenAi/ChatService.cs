@@ -29,21 +29,22 @@ public class ChatService
         var tools = config.Tools.Select(s => new ToolOption("function", s.Function)).ToList();
         var cachedMessages = await GetCachedMessages(request.ConversationId);
         var messages = cachedMessages.Concat(request.Messages ?? new List<ChatMessageHistory>()).ToList();
+        var systemPrompt = AddContext(request.SystemPrompt);
 
         if (!messages.Any())
         {
             messages = new List<ChatMessageHistory>
             {
-                new () { Role = "system", Content = request.SystemPrompt},
+                new () { Role = "system", Content = systemPrompt},
                 new () { Role = "user", Content = request.UserPrompt}
             };
         }
         else
         {
             messages = messages.Distinct().ToList();
-            if (!string.IsNullOrWhiteSpace(request.SystemPrompt) && messages.All(a => a.Role != "system"))
+            if (!string.IsNullOrWhiteSpace(systemPrompt) && messages.All(a => a.Role != "system"))
             {
-                messages.Add(new ChatMessageHistory{ Role = "system", Content = request.SystemPrompt});   
+                messages.Add(new ChatMessageHistory{ Role = "system", Content = systemPrompt});   
             }
             if (!string.IsNullOrWhiteSpace(request.UserPrompt))
             {
@@ -101,7 +102,7 @@ public class ChatService
                 {
                     Role = ChatMessageTypes.Assistant,
                     Content = response,
-                } );
+                });
                 await SaveCachedMessages(request.ConversationId, messages);
                 return new {
                     request.ConversationId,
@@ -218,5 +219,21 @@ public class ChatService
         };
         var messagesJson = JsonSerializer.Serialize(messages, options);
         await database.StringSetAsync($"{RedisConversationSubject}-{conversationId}", messagesJson);
+    }
+
+    private string AddContext(string systemPrompt)
+    {
+        if (!string.IsNullOrEmpty(systemPrompt) && !systemPrompt.Contains("<context>"))
+        {
+            systemPrompt += $@"
+                <context>{Environment.NewLine}
+                    Current Date: {DateTime.Now.ToShortDateString()} {Environment.NewLine}
+                    Current Time: {DateTime.Now.ToShortTimeString()} {Environment.NewLine}
+                    Timezone: {TimeZoneInfo.Local.Id} {Environment.NewLine}
+                </context>
+            ";
+        }
+
+        return systemPrompt;
     }
 }
