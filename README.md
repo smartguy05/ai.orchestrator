@@ -8,7 +8,7 @@ handling email and webhook requests. The service is extensible using plugins.
 - [Overview](#overview)
 - [Features](#features)
 - [Plugins](#plugins)
-  - [Example Workflow](#example)
+  - [Example Workflow](example-process-using-plugins)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -258,16 +258,11 @@ NOTE: This example is using the TextController endpoint
         "redisConnectionString": "localhost:6379"
     }
     ```
-~~~~
 ---
 
 ## Usage
 
 - **Orchestrator.cs**: The main service class that orchestrates different tasks and modules.
-
-PLANNED (2025)
-- **TaskScheduler.cs**: Manages scheduling for AI tasks.
-- **TaskManager.cs**: Handles creation, monitoring, and execution of tasks.
 
 ## Configuration
 
