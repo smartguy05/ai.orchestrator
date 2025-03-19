@@ -5,22 +5,18 @@ handling email and webhook requests. The service is extensible using plugins.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Features](#features)
-3. [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-4. [Usage](#usage)
-    - [Project Structure](#project-structure)
-    - [Configuration](#configuration)
-    - [Running the Orchestrator](#running-the-orchestrator)
-5. [Examples](#examples)
-    - [Using the Orchestrator in a .NET Application](#using-the-orchestrator-in-a-net-application)
-    - [Command-Line Usage (If Applicable)](#command-line-usage-if-applicable)
-6. [Extending Ai.Orchestrator](#extending-aiorchestrator)
-    - [Custom Modules](#custom-modules)
-    - [Contributing](#contributing)
-7[License](#license)
+- [Overview](#overview)
+- [Features](#features)
+- [Plugins](#plugins)
+   - [Example Workflow](#example)
+- [Getting Started](#getting-started)
+   - [Prerequisites](#prerequisites)
+   - [Installation](#installation)
+   - [Running the Orchestrator](#running-the-orchestrator)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -83,7 +79,7 @@ Example Request:
   "conversationId": null
 }
 ```
-*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can you to do multi-shot prompting instead of single shot as shown in this example*
+*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can use to do multi-shot prompting instead of single shot as shown in this example*
 
 Example Successful Response:
 ```
