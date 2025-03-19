@@ -23,10 +23,43 @@ public class ChatService
         Dictionary<string, IEnumerable<string>> serviceFunctions)
     {
         request.ConversationId ??= Guid.NewGuid().ToString();
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
-
+        
         var tools = config.Tools.Select(s => new ToolOption("function", s.Function)).ToList();
+        var messages = await GetMessages(request);
+        var result = await SendRequest(config, request, messages, tools);
+
+        if (!result.IsSuccessStatusCode)
+        {
+            var errorContent = await result.Content.ReadAsStringAsync();
+            throw new Exception($"HTTP Error: {result.StatusCode}\nResponse Content: {errorContent}");
+        }
+        
+        var choice = result.Content.ReadFromJsonAsync<ChatCompletionResponse>().Result.Choices.First();
+
+        return await ProcessResponse(choice, request, messages, serviceFunctions);
+    }
+    
+    private static void NormalizeMessages(ref List<ChatMessageHistory> messages)
+    {
+        for (var i = 0; i < messages.Count; i++)
+        {
+            if (messages[i].Content is not null && messages[i].Content is not string)
+            {
+                var newMessage = new ChatMessageHistory
+                {
+                    Role = messages[i].Role,
+                    Content = JsonSerializer.Serialize(messages[i].Content),
+                    ToolCallId = messages[i].ToolCallId,
+                    Id = messages[i].Id,
+                    ToolCalls = messages[i].ToolCalls
+                };
+                messages[i] = newMessage;
+            }
+        }
+    }
+
+    private async Task<List<ChatMessageHistory>> GetMessages(ServiceRequest request)
+    {
         var cachedMessages = await GetCachedMessages(request.ConversationId);
         var messages = cachedMessages.Concat(request.Messages ?? new List<ChatMessageHistory>()).ToList();
         var systemPrompt = AddContext(request.SystemPrompt);
@@ -51,48 +84,13 @@ public class ChatService
                 messages.Add(new ChatMessageHistory{ Role = "user", Content = request.UserPrompt });
             }
         }
-        //normalize messages
-        for (var i = 0; i < messages.Count; i++)
-        {
-            if (messages[i].Content is not null && messages[i].Content is not string)
-            {
-                var newMessage = new ChatMessageHistory
-                {
-                    Role = messages[i].Role,
-                    Content = JsonSerializer.Serialize(messages[i].Content),
-                    ToolCallId = messages[i].ToolCallId,
-                    Id = messages[i].Id,
-                    ToolCalls = messages[i].ToolCalls
-                };
-                messages[i] = newMessage;
-            }
-        }
 
-        // send request
-        var oAiRequest = new ApiRequest
-        {
-            Model = request.Model,
-            Messages = messages,
-            Temperature = request.Temperature,
-            Tools = tools
-        };
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-        var body = JsonSerializer.Serialize(oAiRequest, options);
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
+        NormalizeMessages(ref messages);
+        return messages;
+    }
 
-        var result = await httpClient.PostAsync(config.OpenAiUrl, content);
-
-        if (!result.IsSuccessStatusCode)
-        {
-            var errorContent = await result.Content.ReadAsStringAsync();
-            throw new Exception($"HTTP Error: {result.StatusCode}\nResponse Content: {errorContent}");
-        }
-        
-        var choice = result.Content.ReadFromJsonAsync<ChatCompletionResponse>().Result.Choices.First();
-        
+    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions)
+    {
         switch (choice.FinishReason)
         {
             case ChatFinishReasons.Stop:
@@ -186,6 +184,28 @@ public class ChatService
                 throw new NotImplementedException(choice.FinishReason);
             }
         }
+    }
+
+    private async Task<HttpResponseMessage> SendRequest(ServiceConfig config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
+    {
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
+
+        var oAiRequest = new ApiRequest
+        {
+            Model = request.Model,
+            Messages = messages,
+            Temperature = request.Temperature,
+            Tools = tools
+        };
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var body = JsonSerializer.Serialize(oAiRequest, options);
+        var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        return await httpClient.PostAsync(config.OpenAiUrl, content);
     }
     
     private async Task<List<ChatMessageHistory>> GetCachedMessages(string conversationId)
