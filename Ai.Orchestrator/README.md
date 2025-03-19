@@ -52,10 +52,18 @@ which are populated by Orchestrator from the plugin configs. Each plugin can ret
 result or another OrchestratorRequest so that more actions may be taken. Using this method a series of commands 
 can be made to perform a complex action.
 
-### **Example:**
+### **Example Process using plugins:**
 
 NOTE: This example is using the TextController endpoint
-1. User Request: "Respond to my last email, ask them when we can meet up."
+1. User Request:
+```
+{
+  "userPrompt": "Respond to my last email, ask them when we can meet up.",
+  "systemPrompt": "You are a helpful assistant. Your job is to help me with handling emails.",
+  "conversationId": null
+}
+```
+*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can use to do multi-shot prompting instead of single shot as shown in this example*
 2. The request is passed to the OpenAI compliant API along with a list of the available tool functions.
 3. The API responds with a tool call to perform, "get_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
 4. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
@@ -69,21 +77,9 @@ NOTE: This example is using the TextController endpoint
 12. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator with a true (email sent) or false (didn't send) value.
 13. Orchestrator sees that the requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
 14. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
-15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not. 
-
-Example Request:
+15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not:
 ```
-{
-  "userPrompt": "Respond to my last email. Ask them about meeting up on Friday.",
-  "systemPrompt": "You are a helpful assistant. Your job is to help me with handling emails.",
-  "conversationId": null
-}
-```
-*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can use to do multi-shot prompting instead of single shot as shown in this example*
-
-Example Successful Response:
-```
-{
+{~~~~
   "conversationId": "da8a5ffd-7a1e-4abe-8c07-6399e130c21d",
   "result": "I have sent the reply to Jordan Reynolds requesting a meeting on Friday."
 }
@@ -121,6 +117,128 @@ Example Successful Response:
 ### Running the Orchestrator
 `dotnet run`
 
+### Creating Plugins
+
+- Edit .csproj file, add EnableDynamicLoading
+
+`<EnableDynamicLoading>true</EnableDynamicLoading>`
+
+- Example csproj settings:
+  ```
+  <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <OutputPath>..\..\Ai.Orchestrator\bin\Debug\net7.0\Plugins</OutputPath>
+    </PropertyGroup>
+    <PropertyGroup>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj">
+        </ProjectReference>
+        <ProjectReference Include="..\..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+  </Project>
+    ```
+
+- Example Plugin Configs 
+  - Test_Plugin
+  ```
+  {
+      "name": "test",
+      "description": "A plugin to test orchestrator",
+      "contract": { },
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "test_plugin",
+            "description": "A test plugin to see if plugins are working. You should not use this plugin unless specifially asked to do so.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "A test name value"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "A test description value"
+                }
+              },
+              "required": []
+            } 
+          }
+        }
+      ],
+      "toolFunctions": [
+        "test_plugin"
+      ],
+      "testName": "Test Name",
+      "testName2": "Test Name 2"
+  }
+  ```
+- Ai.Orchestrator.Plugins.Webhook 
+  ```
+    {
+      "name": "webhook",
+      "description": "A plugin for calling configured webhooks",
+      "contract": { },
+      "tools": [
+          {
+              "type": "function",
+              "function": {
+                  "name": "webhook",
+                  "description": "Use this function to call a specified webhook.",
+                  "properties": {
+                      "type": "object",
+                      "properties": {
+                          "name": {
+                              "type": "string",
+                              "description": "The name of the webhook to use"
+                          },
+                          "value": {
+                              "type": "string",
+                              "description": "The value to send to the webhook"
+                          }
+                      },
+                      "required": ["name","value"]
+                  }
+              }
+          }
+      ],
+      "toolFunctions": [
+          "webhook"
+      ],
+      "webhooks": [
+          {
+              "name": "HomeAssistant",
+              "url": "http://homeassistant_ip:port/api/webhook/webhook-id"
+          }	
+      ]
+  }~~~~
+  ```
+- Ai.Orchestrator.Plugins.OpenAI
+    ```
+    {
+        "name": "openai",
+        "contract": {},
+        "description": "Open AI integration",
+        "toolFunctions": [],
+        "openAiApiKey": "sk-proj-your-key-here",
+        "openAiUrl": "https://api.openai.com/v1/chat/completions",
+        "redisConnectionString": "localhost:6379"
+    }
+    ```
+~~~~
 ---
 
 ## Usage
