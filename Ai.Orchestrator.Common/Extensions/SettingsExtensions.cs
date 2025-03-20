@@ -10,12 +10,7 @@ public static class SettingsExtensions
     {
         if (!string.IsNullOrWhiteSpace(config))
         {
-            var deserialized = JsonSerializer.Deserialize<T>(config, new JsonSerializerOptions { PropertyNameCaseInsensitive = true});
-            using JsonDocument doc = JsonDocument.Parse(deserialized.Contract.ToString());
-            var element = doc.RootElement;
-            var contract = element.Deserialize<ExpandoObject>();
-            deserialized.Contract = contract;
-            return deserialized;
+            return JsonSerializer.Deserialize<T>(config, new JsonSerializerOptions { PropertyNameCaseInsensitive = true});
         }
 
         return default;

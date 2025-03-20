@@ -23,7 +23,7 @@ public class TextController : ControllerBase
         {
             textRequest.SystemPrompt,
             textRequest.UserPrompt,
-            Model = "gpt-4o", // todo: make this a setting
+            Model = "gpt-4o-mini", // todo: make this a setting
             textRequest.ConversationId
         };
         var stringified = JsonSerializer.Serialize(serviceRequest);
