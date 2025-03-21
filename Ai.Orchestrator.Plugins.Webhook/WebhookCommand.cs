@@ -15,7 +15,7 @@ public class WebhookCommand: ICommand
     
     public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest as ServiceRequest;
+        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadConfig<ServiceConfig>();
 
         if (serviceRequest is null)

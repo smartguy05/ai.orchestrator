@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using Ai.Orchestrator.Common.Extensions;
+﻿using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
@@ -19,12 +18,7 @@ public class EmailCommand: ICommand
 
     public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-        var serviceRequest = JsonSerializer.Deserialize<ServiceRequest>((string)request.ServiceRequest, options);
+        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadConfig<ServiceConfig>();
 
         if (serviceRequest is null)
