@@ -22,6 +22,11 @@ public class OpenAiCommand : ICommand
             throw new Exception("Unable to read openai service request");
         }
 
+        if (serviceRequest is not null)
+        {
+            serviceRequest.SystemPrompt ??= config.DefaultSystemPrompt;
+        }
+
         var service = new ChatService(config);
         if (request.Messages is not null && request.Messages.Any())
         {

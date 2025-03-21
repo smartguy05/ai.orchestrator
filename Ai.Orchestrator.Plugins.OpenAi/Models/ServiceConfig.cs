@@ -11,4 +11,5 @@ public record ServiceConfig: IPluginConfig
     public string OpenAiApiKey { get; set; }
     public string OpenAiUrl { get; set; }
     public string RedisConnectionString { get; set; }
+    public string DefaultSystemPrompt { get; set; }
 }
