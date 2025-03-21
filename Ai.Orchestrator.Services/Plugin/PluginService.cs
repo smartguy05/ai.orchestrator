@@ -77,10 +77,17 @@ public class PluginService : IPluginService
                 var element = doc.RootElement;
                 var expando = element.Deserialize<ExpandoObject>();
                 var dictionary = (IDictionary<string, object>)expando;
-                
-                if (dictionary.TryGetValue("toolFunctions", out var value))
+
+                if (dictionary.TryGetValue("tools", out var tools))
                 {
-                    var functions = ((JsonElement)value).EnumerateArray().Select(s => s.GetString()).ToList();   
+                    var toolCalls = ((JsonElement)tools)
+                        .EnumerateArray()
+                        .Select(item => JsonSerializer.Deserialize<ToolCall>(item, new JsonSerializerOptions 
+                        { 
+                            PropertyNameCaseInsensitive = true 
+                        }))
+                        .ToList();
+                    var functions = toolCalls.Select(s => s.Function.Name).ToList();
                     configs.Add(plugin, functions);
                 }
             }

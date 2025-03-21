@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Tools;
@@ -24,6 +20,11 @@ public class OpenAiCommand : ICommand
         if (serviceRequest is null && (request.Messages is null || !request.Messages.Any()))
         {
             throw new Exception("Unable to read openai service request");
+        }
+
+        if (serviceRequest is not null)
+        {
+            serviceRequest.SystemPrompt ??= config.DefaultSystemPrompt;
         }
 
         var service = new ChatService(config);
