@@ -12,4 +12,8 @@
       <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
+    </ItemGroup>
+
 </Project>

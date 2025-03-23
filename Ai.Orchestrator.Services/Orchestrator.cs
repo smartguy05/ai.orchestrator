@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Interfaces;
 
 namespace Ai.Orchestrator.Services;
@@ -13,6 +14,7 @@ public class Orchestrator: IOrchestrator
         )
     {
         _pluginService = pluginService;
+        MessageCache.Init();
     }
 
     public Task<Dictionary<string, IEnumerable<string>>> GetPluginContracts()
@@ -50,23 +52,78 @@ public class Orchestrator: IOrchestrator
         return response;
     }
 
-    // todo: fix this method
     public async Task<object> ProcessRequestChain(IEnumerable<OrchestratorRequest> requests)
     {
-        return await Task.Run(() =>
+        var requestList = requests?.ToList();
+        if (requests is null || !requestList.Any())
         {
-            // var orderedRequests = requests.OrderBy(o => o.Order).ToList();
-            object data = null;
-            // orderedRequests.ForEach(async request =>
-            // {
-            //     // if (data is not null)
-            //     // {
-            //     //     request.Data = data;
-            //     // }
-            //     data = await ProcessRequest(request);
-            // });
+            throw new Exception("No requests found");
+        }
 
-            return data;
+        var messages = requestList
+            .Select(f => f.Messages)
+            .FirstOrDefault()
+            ?.ToList();
+
+        if (messages is null || !messages.Any())
+        {
+            throw new Exception("No messages found");
+        }
+
+        var requestingService = string.Empty;
+
+        var firstServiceRequest = requestList.First().ServiceRequest;
+        string conversationId = null;
+        if (firstServiceRequest is string serviceRequestString)
+        {
+            var serviceRequestJson = JsonSerializer.Deserialize<JsonElement>(serviceRequestString);
+            if (serviceRequestJson.TryGetProperty("requestingService", out var service))
+            {
+                requestingService = service.GetString();    
+            }
+
+            if (serviceRequestJson.TryGetProperty("conversationId", out var convoId))
+            {
+                conversationId = convoId.GetString();
+            }
+        }
+        
+        var processedMessages = messages.ToList();
+
+        string lastToolCallId = null;
+        for (var i = 0; i < requestList.Count; i++)
+        {
+            var newRequest = requestList[i];
+            newRequest.ToolCallId = null; // null so we are returned the actual object instead of another Orchestrator Request
+            var toolCall = messages.Last().ToolCalls[i];
+            
+            // todo: multi-thread
+            // process each item
+            var result = await ProcessRequest(newRequest);
+            
+            // add new tool message after
+            var toolResponseMessage = new ChatMessageHistory
+            {
+                Role = ChatMessageTypes.Tool,
+                Content = result is string ? result : JsonSerializer.Serialize(result),
+                ToolCallId = toolCall.Id
+            };
+            processedMessages.Add(toolResponseMessage);
+            lastToolCallId = toolCall.Id;
+        }
+        
+        // create single return OrchestratorRequest and return
+        var last = requestList.Last();
+        
+        // correct cached messages
+        await MessageCache.SaveCachedMessages(conversationId, processedMessages);
+        return await ProcessRequest(new OrchestratorRequest
+        {
+            Service = requestingService,
+            ServiceRequest = last.ServiceRequest,
+            ToolCallId = lastToolCallId,
+            ServiceFunctions = last.ServiceFunctions,
+            Messages = processedMessages
         });
     }
 
