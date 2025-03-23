@@ -1,7 +1,4 @@
-﻿using System.Text.Json;
-using Ai.Orchestrator.Common.Extensions;
-using Ai.Orchestrator.Models;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Email.Models;
 using MailKit;
@@ -12,26 +9,13 @@ using MimeKit;
 
 namespace Ai.Orchestrator.Plugins.Email;
 
-public class EmailCommand: ICommand
+public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
-    public string Name => "Email";
-    public string Description => "Send/Read email";
+    public override string Name => "Email";
+    public override string Description => "Send/Read email";
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-        var serviceRequest = JsonSerializer.Deserialize<ServiceRequest>((string)request.ServiceRequest, options);
-        var config = configString.ReadConfig<ServiceConfig>();
-
-        if (serviceRequest is null)
-        {
-            throw new Exception("Unable to read email service request");
-        }
-
         switch (serviceRequest.Method.ToLower())
         {
             case "get_email":
@@ -44,20 +28,12 @@ public class EmailCommand: ICommand
                             w.Subject.Contains(serviceRequest.SearchSubject, StringComparison.InvariantCultureIgnoreCase))
                         .ToList();
                 }
-
-                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-                {
-                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, mail);
-                }
+                
                 return mail;
             }
             case "send_email":
             {
                 var success = await SendEmail(serviceRequest, config);
-                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-                {
-                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
-                }
                 return Task.FromResult((object)new
                 {
                     Success = success
@@ -66,10 +42,6 @@ public class EmailCommand: ICommand
             case "delete_email":
             {
                 var success = await DeleteEmail(serviceRequest, config);
-                if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-                {
-                    return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, success);
-                }
                 return Task.FromResult((object)new
                 {
                     Success = success

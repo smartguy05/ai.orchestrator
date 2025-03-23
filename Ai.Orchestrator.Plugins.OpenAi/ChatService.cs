@@ -5,18 +5,15 @@ using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
-using StackExchange.Redis;
+using Ai.Orchestrator.Services;
 
 namespace Ai.Orchestrator.Plugins.OpenAi;
 
 public class ChatService
 {
-    private const string RedisConversationSubject = "openai.plugin";
-    private readonly ConnectionMultiplexer _redisConnection;
-    
-    public ChatService(ServiceConfig config)
+    public ChatService()
     {
-        _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString);
+        MessageCache.Init();
     }
     
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
@@ -60,8 +57,8 @@ public class ChatService
 
     private async Task<List<ChatMessageHistory>> GetMessages(ServiceRequest request)
     {
-        var cachedMessages = await GetCachedMessages(request.ConversationId);
-        var messages = cachedMessages.Concat(request.Messages ?? new List<ChatMessageHistory>()).ToList();
+        var cachedMessages = await MessageCache.GetCachedMessages(request.ConversationId);
+        var messages = cachedMessages ?? request.Messages.ToList(); // cachedMessages.Concat(request.Messages ?? new List<ChatMessageHistory>()).ToList();
         var systemPrompt = AddContext(request.SystemPrompt);
 
         if (!messages.Any())
@@ -101,7 +98,7 @@ public class ChatService
                     Role = ChatMessageTypes.Assistant,
                     Content = response,
                 });
-                await SaveCachedMessages(request.ConversationId, messages);
+                await MessageCache.SaveCachedMessages(request.ConversationId, messages);
                 return new {
                     request.ConversationId,
                     Result = response
@@ -115,16 +112,16 @@ public class ChatService
                     using JsonDocument doc = JsonDocument.Parse(choice.Message.ToString());
                     var root = doc.RootElement;
                     var toolCallsResponse = root.Deserialize<ToolCallsResponse>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    messages.Add(new ()
+                    {
+                        Role = ChatMessageTypes.Assistant,
+                        ToolCallId = null,
+                        Content = null,
+                        ToolCalls = toolCallsResponse.ToolCalls,
+                        Name = null
+                    });
                     foreach (var toolCall in toolCallsResponse.ToolCalls)
                     {
-                        messages.Add(new ()
-                        {
-                            Role = ChatMessageTypes.Assistant,
-                            ToolCallId = toolCall.Id,
-                            Content = toolCall.Function,
-                            ToolCalls = toolCallsResponse.ToolCalls,
-                            Name = toolCall.Function.Name
-                        } );
                         var serviceFunction = serviceFunctions
                             .FirstOrDefault(w => w.Value.ToList().Contains(toolCall.Function.Name));
                         using var argumentsJson = JsonDocument.Parse(toolCall.Function.Arguments);
@@ -153,7 +150,7 @@ public class ChatService
                         });
                     }
                     
-                    await SaveCachedMessages(request.ConversationId, messages);
+                    await MessageCache.SaveCachedMessages(request.ConversationId, messages);
 
                     if (requests.Count == 1)
                     {
@@ -208,39 +205,6 @@ public class ChatService
         return await httpClient.PostAsync(config.OpenAiUrl, content);
     }
     
-    private async Task<List<ChatMessageHistory>> GetCachedMessages(string conversationId)
-    {
-        var database = _redisConnection.GetDatabase();
-        var cachedMessagesJson = await database.StringGetAsync($"{RedisConversationSubject}-{conversationId}");
-
-        if (cachedMessagesJson.HasValue)
-        {
-            return JsonSerializer.Deserialize<List<ChatMessageHistory>>(cachedMessagesJson);
-        }
-
-        return new List<ChatMessageHistory>();
-    }
-    
-    private async Task SaveCachedMessages(string conversationId, List<ChatMessageHistory> messages)
-    {
-        var database = _redisConnection.GetDatabase();
-        var cachedMessagesJson = await database.StringGetAsync($"{RedisConversationSubject}-{conversationId}");
-
-        if (cachedMessagesJson.HasValue)
-        {
-            await database.KeyDeleteAsync($"{RedisConversationSubject}-{conversationId}");
-        }
-
-        messages = messages.Distinct().ToList();
-        
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-        var messagesJson = JsonSerializer.Serialize(messages, options);
-        await database.StringSetAsync($"{RedisConversationSubject}-{conversationId}", messagesJson);
-    }
-
     private string AddContext(string systemPrompt)
     {
         if (!string.IsNullOrEmpty(systemPrompt) && !systemPrompt.Contains("<context>"))

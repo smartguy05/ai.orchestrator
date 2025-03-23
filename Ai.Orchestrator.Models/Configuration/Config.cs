@@ -8,6 +8,8 @@ public class Config: IConfig
     public string PluginDirectory { get; set; }
     public string ConfigDirectory { get; set; }
     public string ActivePlugins { get; set; }
+    public string RedisConnectionString { get; set; }
+    public string RedisConversationSubject { get; set; }
 
     public Config()
     {

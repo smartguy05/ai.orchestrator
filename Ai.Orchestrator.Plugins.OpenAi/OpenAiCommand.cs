@@ -27,7 +27,7 @@ public class OpenAiCommand : ICommand
             serviceRequest.SystemPrompt ??= config.DefaultSystemPrompt;
         }
 
-        var service = new ChatService(config);
+        var service = new ChatService();
         if (request.Messages is not null && request.Messages.Any())
         {
             if (serviceRequest is null)

@@ -31,9 +31,9 @@ handling email and webhook requests. The service is extensible using plugins.
 Planned:
 
 - (Complete) ~~**Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
+- (Complete) ~~**RAG**: Add RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb)~~
 - **Request Stream**: Use stream to allow updating periodically to the user
 - **File Upload**: Allow file upload for context/plugin purposes
-- **RAG**: Add RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb) (soon to be made open source)
 - **Long-term chat memory**: Remember details about the user to help with context in future requests
 - **Request Security**: Validate user or use different configs based on user
 - **Task Scheduler**: Manages scheduling for future AI tasks

@@ -1,30 +1,21 @@
 ﻿using System.Text;
 using System.Text.Json;
-using Ai.Orchestrator.Common.Extensions;
-using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Webhook.Models;
 
 namespace Ai.Orchestrator.Plugins.Webhook;
 
-public class WebhookCommand: ICommand
+public class WebhookCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
-    public string Name => "Webhook";
-    public string Description  => "Send a Webhook request";
-    
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
-    {
-        var serviceRequest = request.ServiceRequest as ServiceRequest;
-        var config = configString.ReadConfig<ServiceConfig>();
+    public override string Name => "Webhook";
+    public override string Description  => "Send a Webhook request";
 
-        if (serviceRequest is null)
-        {
-            throw new Exception("Unable to read webhook service request");
-        }
-        
+    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
+    {
         var webhook = config.Webhooks.FirstOrDefault(f =>
             string.Equals(f.Name, serviceRequest.WebhookName, StringComparison.InvariantCultureIgnoreCase));
+
         if (webhook is not null)
         {
             var httpClient = new HttpClient();
@@ -34,8 +25,7 @@ public class WebhookCommand: ICommand
             };
             var json = JsonSerializer.Serialize(content);
             StringContent sContent = new StringContent(json, Encoding.UTF8, "application/json");
-            var result = await httpClient.PostAsync(new Uri(webhook.Url), sContent);
-            return result;
+            return await httpClient.PostAsync(new Uri(webhook.Url), sContent);
         }
 
         return false;

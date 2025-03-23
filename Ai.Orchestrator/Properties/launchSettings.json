@@ -11,7 +11,9 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "PluginDirectory": "Plugins",
         "ConfigDirectory": "Configs",
-        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi,Ai.Orchestrator.Plugins.SupportChannelKb"
+        "ActivePlugins": "Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi,Ai.Orchestrator.Plugins.SupportChannelKb",
+        "RedisConnectionString": "localhost:6379",
+        "RedisConversationSubject": "openai.plugin"
       }
     },
     "https": {
