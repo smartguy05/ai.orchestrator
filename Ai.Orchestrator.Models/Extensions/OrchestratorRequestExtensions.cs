@@ -6,7 +6,7 @@ namespace Ai.Orchestrator.Models.Extensions;
 
 public static class OrchestratorRequestExtensions
 {
-    public static OrchestratorRequest ReturnNewOrchestratorRequest(this OrchestratorRequest request, string requestingService, object data)
+    public static async  Task<OrchestratorRequest> ReturnNewOrchestratorRequest(this OrchestratorRequest request, string requestingService, object data)
     {
         if (request.Messages is not null && request.Messages.Any())
         {
@@ -19,10 +19,21 @@ public static class OrchestratorRequestExtensions
                     Content = data is string ? data : JsonSerializer.Serialize(data),
                     ToolCallId = request.ToolCallId
                 });
+                string conversationId = null;
+                if (request.ServiceRequest is string serviceRequestString)
+                {
+                    var serviceRequestJson = JsonSerializer.Deserialize<JsonElement>(serviceRequestString);
+                    if (serviceRequestJson.TryGetProperty("conversationId", out var convoId))
+                    {
+                        conversationId = convoId.GetString();
+                    }
+                }
+
+                await MessageCache.SaveCachedMessages(conversationId, chatMessages);
                 return new OrchestratorRequest
                 {
                     Service = requestingService,
-                    ServiceRequest = null,
+                    ServiceRequest = request.ServiceRequest,
                     ToolCallId = request.ToolCallId,
                     ServiceFunctions = request.ServiceFunctions,
                     Messages = chatMessages

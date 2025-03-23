@@ -17,7 +17,7 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
         
         if (!string.IsNullOrWhiteSpace(request.ToolCallId))
         {
-            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
+            return await request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
         }
 
         return result;

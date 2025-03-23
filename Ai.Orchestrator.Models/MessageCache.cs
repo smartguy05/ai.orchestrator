@@ -3,7 +3,7 @@ using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Configuration;
 using StackExchange.Redis;
 
-namespace Ai.Orchestrator.Services;
+namespace Ai.Orchestrator.Models;
 
 public static class MessageCache
 {
