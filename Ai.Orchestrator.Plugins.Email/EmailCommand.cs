@@ -79,7 +79,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             }
         };
         message.From.Add(new MailboxAddress(mailAccount.DisplayName, mailAccount.Email));
-        message.To.Add(new MailboxAddress(request.RecipientName, request.Destination));
+        message.To.Add(new MailboxAddress(request.RecipientName, request.To));
 
         using var client = new SmtpClient();
         try
@@ -164,44 +164,77 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             Console.WriteLine($"Mail account {mailAccount.Username} authenticated");
             
             await client.Inbox.OpenAsync(FolderAccess.ReadOnly);
-            var messageCount = client.Inbox.Count;
+            Console.WriteLine($"Total messages in INBOX: {client.Inbox.Count}");
             
-            Console.WriteLine($"Total messages in INBOX: {messageCount}");
+            var messageCount = Math.Min(client.Inbox.Count, request.MaxReturnedEmails ?? 10);
+
+            var emailIds = new List<UniqueId>();
+            if (!string.IsNullOrWhiteSpace(request.MessageId))
+            {
+                var emails = await client.Inbox.SearchAsync(SearchOptions.All, SearchQuery.HeaderContains("Message-Id", request.MessageId));
+                emailIds.AddRange(emails.UniqueIds);
+            } else if (request.UnreadOnly) 
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.NotSeen));
+            } else if (!string.IsNullOrWhiteSpace(request.Sender))
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.FromContains(request.Sender)));
+            } else if (!string.IsNullOrWhiteSpace(request.Subject))
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.SubjectContains(request.Subject)));
+            } else if (!string.IsNullOrWhiteSpace(request.To))
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.ToContains(request.To)));
+            } else if (!string.IsNullOrWhiteSpace(request.EmailsSentAfter))
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.SentSince(DateTime.Parse(request.EmailsSentAfter))));
+            } else if (!string.IsNullOrWhiteSpace(request.EmailsSentBefore))
+            {
+                emailIds.AddRange(await client.Inbox.SearchAsync(SearchQuery.SentSince(DateTime.Parse(request.EmailsSentBefore))));
+            }
+
+            var distinctEmailIds = emailIds.Distinct().ToList();
+            
+            messageCount = distinctEmailIds.Any() ? distinctEmailIds.Count : messageCount;
+            Console.WriteLine($"Total messages processing: {messageCount}");
 
             List<MailMessage> messages = new();
-            for (var i = 0; i < messageCount; i++)
+            if (distinctEmailIds.Any())
             {
-                var inboxMessage = await client.Inbox.GetMessageAsync(i);
-                var body = GetEmailBody(inboxMessage);
-                var hasAttachments = false;
-                List<string> attachments = new();
-                
-                if (inboxMessage.Attachments != null && inboxMessage.Attachments.Any())
+                foreach (var uniqueId in distinctEmailIds)
                 {
-                    hasAttachments = true;
-                    attachments.AddRange(inboxMessage.Attachments.Select(attachment => attachment is MimePart part ? part.FileName : "unknown"));
+                    var message = await client.Inbox.GetMessageAsync(uniqueId);
+                    messages.Add(GetMailMessage(message));
                 }
-                
-                var message = new MailMessage
-                {
-                    Body = body,
-                    HasAttachments = hasAttachments,
-                    Attachments = attachments,
-                    MessageId = inboxMessage.MessageId,
-                    Date = inboxMessage.Date,
-                    Subject = inboxMessage.Subject,
-                    Priority = inboxMessage.Priority,
-                    Sender = inboxMessage.Sender?.Address,
-                    From = string.Join(", ", inboxMessage.From?.Select(s => s.Name) ?? new List<string> ()),
-                    ReplyTo = string.Join(", ", inboxMessage.ReplyTo?.Select(s => s.Name) ?? new List<string> ()),
-                    To = string.Join(", ", inboxMessage.To?.Select(s => s.Name) ?? new List<string> ()),
-                    Bcc = string.Join(", ", inboxMessage.Bcc?.Select(s => s.Name) ?? new List<string> ())
-                };
-                
-                messages.Add(message);
             }
-            
+            else
+            {
+                for (var i = 0; i < messageCount; i++)
+                {
+                    var message = await client.Inbox.GetMessageAsync(i);
+                    messages.Add(GetMailMessage(message));
+                }
+            }
+
             return messages;
+
+            MailMessage GetMailMessage(MimeMessage mimeMessage)
+            {
+                return new MailMessage
+                {
+                    Body = GetEmailBody(mimeMessage),
+                    HasAttachments = mimeMessage.Attachments is not null,
+                    MessageId = mimeMessage.MessageId,
+                    Date = mimeMessage.Date,
+                    Subject = mimeMessage.Subject,
+                    Priority = mimeMessage.Priority,
+                    Sender = mimeMessage.Sender?.Address,
+                    From = string.Join(", ", mimeMessage.From?.Select(s => s.Name) ?? new List<string>()),
+                    ReplyTo = string.Join(", ", mimeMessage.ReplyTo?.Select(s => s.Name) ?? new List<string>()),
+                    To = string.Join(", ", mimeMessage.To?.Select(s => s.Name) ?? new List<string>()),
+                    Bcc = string.Join(", ", mimeMessage.Bcc?.Select(s => s.Name) ?? new List<string>())
+                };
+            }
         }
         catch (Exception e)
         {
@@ -210,7 +243,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
         }
         finally
         {
-            client.Disconnect(true);
+            await client.DisconnectAsync(true);
         }
     }
     
@@ -219,19 +252,82 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
         // If the email contains multiple parts (multipart), find the text/plain or text/html part
         if (message.Body is TextPart textPart)
         {
-            return textPart.Text;
+            return MinifyContent(textPart.Text);
         }
         else if (message.Body is Multipart multipart)
         {
             foreach (var part in multipart)
             {
                 if (part is TextPart tp && tp.IsHtml)
-                    return tp.Text; // Return HTML body if available
+                    return MinifyContent(tp.Text); // Return minified HTML body without CSS if available
                 else if (part is TextPart tpPlain)
-                    return tpPlain.Text; // Return plain text body if available
+                    return MinifyContent(tpPlain.Text); // Return minified plain text body
             }
         }
 
         return string.Empty; // No body found
+    }
+
+    static string MinifyContent(string html)
+    {
+        // Extract content within <body> tags if they exist
+        var bodyMatch = System.Text.RegularExpressions.Regex.Match(html, @"<body[^>]*>([\s\S]*?)</body>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (bodyMatch.Success)
+        {
+            html = bodyMatch.Groups[1].Value;
+        }
+        
+        // Remove special characters
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"[\p{C}\u00A0\u2007\u202F]", "");
+
+        // Remove Unicode-encoded HTML fragments
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\\u[0-9,A-Z,a,z]{4,}", "");
+        
+        // Remove <style> tags and their content
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"<style[^>]*>.*?</style>", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+    
+        // Remove inline style attributes
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\s+style\s*=\s*""[^""]*""", "");
+    
+        // Remove image links
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"<img[^>]+>", "");
+    
+        // Remove URLs over 100 characters long
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"https?://\S{100,}", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        // Remove structural HTML tags, keeping only text content
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"</?(?:div|span|p|br|table|tr|td|thead|tbody|tfoot)[^>]*>", "");
+    
+        // Remove excess whitespace
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\s+", " ").Trim();
+    
+        // Remove HTML comments
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"<!--.*?-->", "");
+        
+        // Remove wiki style images
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\[([^\]]+)\]\([^\)]+\)", "$1");
+
+        // Remove &nbsp;
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"&nbsp;", "");
+
+        // Remove DOCTYPE
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<!DOCTYPE[^>]*>", "");
+        
+        // Remove html opening tag
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<html[^>]*>", "");
+        
+        // Remove html close tag
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<\\/html>", "");
+        
+        // Remove body opening tag
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<body[^>]*>", "");
+        
+        // Remove body close tag
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<\\/body>", "");
+        
+        // Remove head opening tag
+        html = System.Text.RegularExpressions.Regex.Replace(html, "<head>.+<\\/head>", "");
+        
+        return html;
     }
 }
