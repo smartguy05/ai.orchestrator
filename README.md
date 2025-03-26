@@ -27,11 +27,18 @@ handling email and webhook requests. The service is extensible using plugins.
 - **Webhook**: Webhook interface for api.
 - **OpenAI**: OpenAI API integration. Can be configured to use a local OpenAI compliant API.
 - **Plugin/Module Integration**: Easily integrate external modules for additional functionality (logging, notifications, etc.).
+- **Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting
+
+Plugins:
+
+- **RAG**: RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb)
+- **Google Calendar**: Read Calendar events (Planned to expand features)
+- **Python Runner**: Run python scripts
+- **Memos**: Memos integration with locally hosted (UseMemos server)[https://www.usememos.com/]
+- **Web Search**: Add internet search results for context
 
 Planned:
 
-- (Complete) ~~**Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting~~
-- (Complete) ~~**RAG**: Add RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb)~~
 - **Request Stream**: Use stream to allow updating periodically to the user
 - **File Upload**: Allow file upload for context/plugin purposes
 - **Long-term chat memory**: Remember details about the user to help with context in future requests

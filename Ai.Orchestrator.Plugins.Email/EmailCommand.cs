@@ -145,7 +145,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
         }
         finally
         {
-            client.Disconnect(true);
+            await client.DisconnectAsync(true);
         }
 
         return deletedCount;

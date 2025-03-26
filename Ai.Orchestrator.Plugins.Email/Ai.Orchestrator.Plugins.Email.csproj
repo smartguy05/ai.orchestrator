@@ -16,15 +16,24 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
-		<ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj">
+		<Reference Include="Ai.Orchestrator.Common">
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Common.dll</HintPath>
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
-		</ProjectReference>
+		</Reference>
+		<Reference Include="Ai.Orchestrator.Models">
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</Reference>
 	</ItemGroup>
 
 	<ItemGroup>
 	  <PackageReference Include="MailKit" Version="4.7.1.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -17,8 +17,9 @@ public class ChatService
     }
     
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
-        Dictionary<string, IEnumerable<string>> serviceFunctions)
+        Dictionary<string, IEnumerable<string>> serviceFunctions, int attempt)
     {
+        const int maxAttempts = 3;
         request.ConversationId ??= Guid.NewGuid().ToString();
         
         var tools = config.Tools.Select(s => new ToolOption("function", s.Function)).ToList();
@@ -28,6 +29,52 @@ public class ChatService
         if (!result.IsSuccessStatusCode)
         {
             var errorContent = await result.Content.ReadAsStringAsync();
+
+            // Context too long, remove all but system prompt and last user message(s)
+            if (errorContent.ToLower().Contains("this model's maximum context length is"))
+            {
+                if (messages.Count(w => w.Role.ToLower() == "user") < 2)
+                {
+                    var lastUserMessage = messages.FindLastIndex(f => f.Role.ToLower() == "user");
+                    messages = new List<ChatMessageHistory>
+                    {
+                        messages.First(),
+                        messages[lastUserMessage]
+                    };
+                }
+                else // get last 2 user messages
+                {
+                    var secondToLastUserMessageIndex = messages
+                        .Select((msg, index) => new { Message = msg, Index = index })
+                        .Where(x => x.Message.Role.ToLower() == "user")
+                        .OrderBy(x => x.Index)
+                        .Reverse()
+                        .Skip(1)
+                        .First().Index;
+                    var lastUserMessage = messages.FindLastIndex(f => f.Role.ToLower() == "user");
+                    var userMessages = messages
+                        .Where((msg, index) => index >= secondToLastUserMessageIndex && index <= lastUserMessage)
+                        .ToList();
+                    
+                    messages = new List<ChatMessageHistory>
+                    {
+                        messages.First() // include system message
+                    };
+                    messages.AddRange(userMessages);
+                }
+                
+                await MessageCache.SaveCachedMessages(request.ConversationId, messages);
+
+                if (attempt <= maxAttempts)
+                {
+                    attempt++;
+                    request.Messages = null;
+                    Console.WriteLine($"Retrying {attempt} of {maxAttempts} attempts");
+                    return await CompleteChat(request, config, serviceFunctions, attempt);
+                }
+                
+                Console.WriteLine("Retry failed.");
+            }
             throw new Exception($"HTTP Error: {result.StatusCode}\nResponse Content: {errorContent}");
         }
         
@@ -36,16 +83,18 @@ public class ChatService
         return await ProcessResponse(choice, request, messages, serviceFunctions);
     }
     
-    private static void NormalizeMessages(ref List<ChatMessageHistory> messages)
+    private void NormalizeMessages(ref List<ChatMessageHistory> messages)
     {
         for (var i = 0; i < messages.Count; i++)
         {
             if (messages[i].Content is not null && messages[i].Content is not string)
             {
+                var content = CleanMessage(JsonSerializer.Serialize(messages[i].Content));
+                
                 var newMessage = new ChatMessageHistory
                 {
                     Role = messages[i].Role,
-                    Content = JsonSerializer.Serialize(messages[i].Content),
+                    Content = content,
                     ToolCallId = messages[i].ToolCallId,
                     Id = messages[i].Id,
                     ToolCalls = messages[i].ToolCalls
@@ -54,6 +103,24 @@ public class ChatService
             }
         }
     }
+    
+    private string CleanMessage(string message)
+    {
+        // Remove excess backslashes
+        message = message.Replace("\\", "");
+    
+        // Decode Unicode characters
+        message = System.Text.RegularExpressions.Regex.Unescape(message);
+    
+        // Remove specific Unicode escape sequences
+        message = System.Text.RegularExpressions.Regex.Replace(message, @"\\u[0-9a-fA-F]{4}", "");
+    
+        // Trim quotes
+        message = message.Trim('"');
+    
+        return message;
+    }
+
 
     private async Task<List<ChatMessageHistory>> GetMessages(ServiceRequest request)
     {
@@ -186,13 +253,13 @@ public class ChatService
     private async Task<HttpResponseMessage> SendRequest(ServiceConfig config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
     {
         using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(300); // Set timeout to 300 seconds (5 minutes)
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
 
         var oAiRequest = new ApiRequest
         {
             Model = request.Model,
             Messages = messages,
-            Temperature = request.Temperature,
             Tools = tools
         };
         var options = new JsonSerializerOptions

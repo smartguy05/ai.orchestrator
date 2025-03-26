@@ -19,6 +19,8 @@
 		<Reference Include="Ai.Orchestrator.Common">
 		  <HintPath>..\..\ai.orchestrator\Ai.Orchestrator.Common\bin\Debug\net7.0\Ai.Orchestrator.Common.dll</HintPath>
 			<PrivateAssets>none</PrivateAssets>
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>
 		<Reference Include="Ai.Orchestrator.Models">
 			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>

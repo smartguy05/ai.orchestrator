@@ -30,7 +30,7 @@ public class DataController : ControllerBase
         }
         var request = new OrchestratorRequest
         {
-            Service = "Ai.Orchestrator.Plugins.PythonRunner",
+            Service = dataRequest.Plugin,
             ServiceRequest = stringified
         };
         return await _orchestrator.ProcessRequest(request);

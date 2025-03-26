@@ -44,6 +44,7 @@ public static class MessageCache
         }
 
         messages = messages.Distinct().ToList();
+        messages = TrimOldMessages(messages);
         
         var options = new JsonSerializerOptions
         {
@@ -51,5 +52,22 @@ public static class MessageCache
         };
         var messagesJson = JsonSerializer.Serialize(messages, options);
         await database.StringSetAsync($"{_redisConversationSubject}-{conversationId}", messagesJson);
+    }
+
+    private static List<ChatMessageHistory> TrimOldMessages(List<ChatMessageHistory> messages)
+    {
+        var lastUserMessage = messages.FindLastIndex(0, f => f.Role.ToLower() == "user");
+        if (lastUserMessage < 0)
+        {
+            return messages;
+        }
+        var index = 0;
+        
+        while (index < lastUserMessage)
+        {
+            messages[index].ToolCalls = null;
+        }
+
+        return messages;
     }
 }

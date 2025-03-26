@@ -11,7 +11,7 @@ public record ServiceRequest: IPluginServiceRequest
     public string RequestingService { get; set; }
     public string SystemPrompt { get; set; }
     public string UserPrompt { get; set; }
-    public string Model { get; set; } = "gpt-4o";
+    public string Model { get; set; }
     public IEnumerable<ChatMessageHistory> Messages { get; set; }
     public double Temperature { get; set; } = 0.7;
     public string ConversationId { get; set; }
