@@ -22,6 +22,7 @@ public static class MessageCache
     
     public static async Task<List<ChatMessageHistory>> GetCachedMessages(string conversationId)
     {
+        Init();
         var database = _redisConnection.GetDatabase();
         var cachedMessagesJson = await database.StringGetAsync($"{_redisConversationSubject}-{conversationId}");
 
@@ -35,6 +36,7 @@ public static class MessageCache
     
     public static async Task SaveCachedMessages(string conversationId, List<ChatMessageHistory> messages)
     {
+        Init();
         var database = _redisConnection.GetDatabase();
         var cachedMessagesJson = await database.StringGetAsync($"{_redisConversationSubject}-{conversationId}");
 
@@ -54,6 +56,13 @@ public static class MessageCache
         await database.StringSetAsync($"{_redisConversationSubject}-{conversationId}", messagesJson);
     }
 
+    public static async Task ClearMessageCache(string conversationId)
+    {
+        Init();
+        var database = _redisConnection.GetDatabase();
+        await database.KeyDeleteAsync($"{_redisConversationSubject}-{conversationId}");
+    }
+    
     private static List<ChatMessageHistory> TrimOldMessages(List<ChatMessageHistory> messages)
     {
         var lastUserMessage = messages.FindLastIndex(0, f => f.Role.ToLower() == "user");

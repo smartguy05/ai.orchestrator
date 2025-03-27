@@ -16,20 +16,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Reference Include="Ai.Orchestrator.Common">
-            <HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Common.dll</HintPath>
+        <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj">
             <Private>false</Private>
             <ExcludeAssets>runtime</ExcludeAssets>
-        </Reference>
-        <Reference Include="Ai.Orchestrator.Models">
-            <HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>
-            <Private>false</Private>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </Reference>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
+      <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
     </ItemGroup>
-
 </Project>

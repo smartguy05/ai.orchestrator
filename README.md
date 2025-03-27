@@ -28,6 +28,7 @@ handling email and webhook requests. The service is extensible using plugins.
 - **OpenAI**: OpenAI API integration. Can be configured to use a local OpenAI compliant API.
 - **Plugin/Module Integration**: Easily integrate external modules for additional functionality (logging, notifications, etc.).
 - **Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting
+- **Long-term chat memory**: Remember details about the user to help with context in future requests
 
 Plugins:
 
@@ -41,7 +42,6 @@ Planned:
 
 - **Request Stream**: Use stream to allow updating periodically to the user
 - **File Upload**: Allow file upload for context/plugin purposes
-- **Long-term chat memory**: Remember details about the user to help with context in future requests
 - **Request Security**: Validate user or use different configs based on user
 - **Task Scheduler**: Manages scheduling for future AI tasks
 - **Task Manager**: Handles creation, monitoring, and execution of tasks
