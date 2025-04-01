@@ -14,7 +14,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
       <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
       <ProjectReference Include="..\Ai.Orchestrator.Services\Ai.Orchestrator.Services.csproj" />
     </ItemGroup>

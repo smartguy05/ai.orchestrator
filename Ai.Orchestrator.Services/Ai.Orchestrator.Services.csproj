@@ -8,24 +8,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Reference Include="Ai.Orchestrator.Common">
-            <HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Common.dll</HintPath>
-            <Private>false</Private>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </Reference>
-        <Reference Include="Ai.Orchestrator.Models">
-            <HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>
-            <Private>false</Private>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
       <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
     </ItemGroup>
-
 </Project>

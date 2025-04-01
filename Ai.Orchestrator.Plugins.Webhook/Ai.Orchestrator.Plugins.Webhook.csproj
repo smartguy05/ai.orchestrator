@@ -21,8 +21,4 @@
             <ExcludeAssets>runtime</ExcludeAssets>
         </ProjectReference>
     </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
-    </ItemGroup>
 </Project>
