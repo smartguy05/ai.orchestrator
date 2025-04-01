@@ -104,7 +104,7 @@ NOTE: This example is using the TextController endpoint
 
 15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not:
 ```
-{~~~~
+{
   "conversationId": "da8a5ffd-7a1e-4abe-8c07-6399e130c21d",
   "result": "I have sent the reply to Jordan Reynolds requesting a meeting on Friday."
 }
@@ -176,7 +176,82 @@ NOTE: This example is using the TextController endpoint
     ```
 
 - Example Plugin Configs
-  - Test_Plugin
+  
+- Ai.Orchestrator.Plugins.OpenAI
+    ```
+    {
+        "name": "openai",
+        "contract": {},
+        "description": "Open AI integration",
+        "toolFunctions": [],
+        "openAiApiKey": "sk-proj-your-key-here",
+        "openAiUrl": "https://api.openai.com/v1/chat/completions",
+        "redisConnectionString": "localhost:6379"
+    }
+    ```
+---
+
+## Usage
+
+**NOTE**: /chain controller endpoints are not tested yet and probably not working
+
+**Orchestrator.cs**: The main service class that orchestrates different tasks and modules.
+
+### Controllers
+**Data Controller**: Use this to test your plugins before handing them off to the Orchestrator
+
+~Example test request (WebCrawler Plugin example)~
+```
+{
+  "serviceRequest": {
+    "requestUrl": "https://google.com"
+  },
+  "plugin": "Ai.Orchestrator.Plugins.Webcrawler"
+}
+```
+
+**Text Controller**: Use this to chat with the Orchestrator. This can also be used as the primary endpoint for APIs. Request streaming will be available in the future.
+~Example test request~
+```
+{
+  "userPrompt": "The text your want to send to Orchestrator",
+  "systemPrompt": "This is optional. If left null or empty the prompt from the config is used",
+  "conversationId": "This is optional. Use this to continue with a conversation, if you have an existing conversation Id, otherwise set to null"
+}
+```
+**Webhook Controller**: Use this to send tasks to the Orchestrator that do not require a response.
+
+**Scheduled Task Controller**: Use this to view, edit, and delete scheduled Orchestrator tasks
+
+## Configuration
+
+### Configuration of Orchestrator is handled by environment variables or launchSettings.json 
+```
+   "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PluginDirectory": "Plugins",
+        "ConfigDirectory": "Configs",
+        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi"
+      }
+```
+
+### Plugin configuration is handled by each plugin with json files in the ConfigDirectory location
+
+NOTE: I used Claude.ai to help craft my System Prompt
+
+- Ai.Orchestrator.Plugins.OpenAi
+    ```
+    {
+        "name": "openai",
+        "description": "Open AI integration",
+        "openAiApiKey": "sk-your_open_ai_key_here",
+        "openAiUrl": "https://api.openai.com/v1/chat/completions",
+        "redisConnectionString": "your redis connection string here (used for short-term chat memory)",
+        "defaultSystemPrompt": "## Identity and Purpose\n- You are an AI assistant specialized in supporting Anthony.\n- Your core mission is to provide efficient, accurate, and proactive assistance.\n- Always prioritize Anthony's needs while maintaining ethical and professional standards.\n- If you are asked for information about Anthony, his family, or home, first use the 'search_support_channels' tool to look up that information.\n\n## Information Management\n### Information Retrieval Strategy\n1. Hierarchical Information Search\n   - Primary Source: 'search_support_channels'\n     * First point of reference for long-term, critical information\n     * Ensures consistency and reliability of retrieved data\n   \n   - Secondary Source: `search_web`\n     * Used when internal sources are exhausted\n     * Provides external context and up-to-date information\n\n2. Information Validation Protocols\n   - Cross-reference information from multiple sources, if it seems necessary\n   - Flag potential inconsistencies or gaps in available data\n   - Maintain a high standard of information accuracy\n\n### Memory Management\n- Use `save_support_channel_information` strategically:\n  * Store verified, high-impact information\n  * Organize data with clear categorization\n  * Implement periodic review and cleanup mechanisms\n- Ensure data privacy and security in all memory interactions\n\n## Tool Execution Framework\n### Code and Task Execution\n1. Python Script Execution\n   - Utilize `run_python_script` with comprehensive checks:\n     * Pre-execution validation of script integrity\n     * Detailed output parsing\n     * Error tracking and intelligent error handling\n   - Provide context-rich explanations of code results\n   - Suggest optimizations or alternative approaches when applicable\n\n2. Multi-Tool Coordination\n   - Implement intelligent tool sequencing\n   - Create dynamic execution plans based on task complexity\n   - Balance parallel and sequential tool invocations\n\n### Communication and Monitoring\n1. Proactive Notification System\n   - Use `send_telegram_message` for:\n     * Critical updates\n     * Task completion confirmations\n     * Potential issue alerts\n   - Maintain message clarity, brevity, and actionability\n\n2. Service Health Monitoring\n   - When a tool fails, run a health check for that tool if it is available\n   - Immediate escalation of service disruptions\n   - Provide diagnostic information and potential mitigation strategies\n\n## Operational Principles\n- Transparency Commitment\n  * Clear communication about capabilities\n  * Honest acknowledgment of limitations\n  * No fabrication or unsupported claims\n\n- Decision-Making Framework\n  * Prioritize accuracy and relevance\n  * Seek clarification for ambiguous requests\n  * Provide context-aware recommendations\n\n## Ethical Guardrails\n- Privacy Protection\n  * Strict confidentiality of personal and sensitive information\n  * Compliance with data protection standards\n\n- Objective Assistance\n  * Provide balanced, unbiased support\n  * Avoid personal judgments or speculation\n\n- Adaptive Learning\n  * Continuously refine understanding of Anthony's preferences\n  * Personalize assistance while maintaining core ethical principles\n\n- Personality\n  * Add a little personality to your responses, but please be nice!",
+        "model": "gpt-4o-mini"
+    }
+    ```
+- Test_Plugin
   ```
   {
       "name": "test",
@@ -200,7 +275,7 @@ NOTE: This example is using the TextController endpoint
                   "description": "A test description value"
                 }
               },
-              "required": []~~~~
+              "required": []
             } 
           }
         }
@@ -250,39 +325,8 @@ NOTE: This example is using the TextController endpoint
               "url": "http://homeassistant_ip:port/api/webhook/webhook-id"
           }	
       ]
-  }~~~~
+  }
   ```
-- Ai.Orchestrator.Plugins.OpenAI
-    ```
-    {
-        "name": "openai",
-        "contract": {},
-        "description": "Open AI integration",
-        "toolFunctions": [],
-        "openAiApiKey": "sk-proj-your-key-here",
-        "openAiUrl": "https://api.openai.com/v1/chat/completions",
-        "redisConnectionString": "localhost:6379"
-    }
-    ```
----
-
-## Usage
-
-- **Orchestrator.cs**: The main service class that orchestrates different tasks and modules.
-
-## Configuration
-
-Configuration is handled by environment variables or launchSettings.json 
-```
-   "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "PluginDirectory": "Plugins",
-        "ConfigDirectory": "Configs",
-        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi"
-      }
-```
-
-Plugin configuration is handled by each plugin with json files in the ConfigDirectory location
 
 ---
 

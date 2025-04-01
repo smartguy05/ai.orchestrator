@@ -33,19 +33,19 @@ class Program
             .UseAuthorization();
 
         app.MapControllers();
-        
-        await app.RunAsync();
 
-        // if (taskScheduler.Subscriber is not null)
-        // {
-        //     await taskScheduler.Subscriber.UnsubscribeAllAsync();
-        // }
-        //
-        // if (taskScheduler.ConnectionMultiplexer is not null)
-        // {
-        //     await taskScheduler.ConnectionMultiplexer.DisposeAsync();
-        // }
-
-        await pluginService.DisposePlugins();
+        try
+        {
+            await app.RunAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            // taskScheduler?.Dispose();
+            await pluginService?.DisposePlugins();    
+        }
     }   
 }

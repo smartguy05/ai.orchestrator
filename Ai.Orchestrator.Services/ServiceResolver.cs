@@ -1,4 +1,6 @@
-﻿namespace Ai.Orchestrator.Services;
+﻿using Ai.Orchestrator.Models.Interfaces;
+
+namespace Ai.Orchestrator.Services;
 
 public static class ServiceResolver
 {
@@ -9,12 +11,26 @@ public static class ServiceResolver
         _serviceProvider = serviceProvider;
     }
 
+    public static IOrchestrator GetOrchestrator()
+    {
+        return GetService<IOrchestrator>();
+    }
+
+    public static IPluginService GetPluginService()
+    {
+        return GetService<IPluginService>();
+    }
+
+    // public static ITaskScheduler GetTaskScheduler()
+    // {
+    //     return GetService<ITaskScheduler>();
+    // }
+    
     public static T GetService<T>()
     {
         if (_serviceProvider is not null)
         {
-            using var scope = _serviceProvider.CreateScope();
-            return scope.ServiceProvider.GetService<T>();
+            return _serviceProvider.GetService<T>();
         }
 
         throw new Exception("No Scope Factory Configured");
