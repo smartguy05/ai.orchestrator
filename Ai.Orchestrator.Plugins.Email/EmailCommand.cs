@@ -1,4 +1,6 @@
-﻿using Ai.Orchestrator.Models.Interfaces;
+﻿using System.Text.RegularExpressions;
+using System.Web;
+using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Email.Models;
 using MailKit;
@@ -21,6 +23,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             case "get_email":
             {
                 var mail = (await GetEmail(serviceRequest, config)).ToList();
+                var count = mail.Count;
                 if (!string.IsNullOrWhiteSpace(serviceRequest.SearchSubject))
                 {
                     mail = mail
@@ -28,8 +31,18 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                             w.Subject.Contains(serviceRequest.SearchSubject, StringComparison.InvariantCultureIgnoreCase))
                         .ToList();
                 }
-                
-                return mail;
+
+                if (serviceRequest.MaxReturnedEmails < mail.Count)
+                {
+                    mail = mail.Take(serviceRequest.MaxReturnedEmails).ToList();
+                }
+
+                return new
+                {
+                    Success = true,
+                    Total = count,
+                    Result = mail
+                };
             }
             case "send_email":
             {
@@ -166,8 +179,6 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             await client.Inbox.OpenAsync(FolderAccess.ReadOnly);
             Console.WriteLine($"Total messages in INBOX: {client.Inbox.Count}");
             
-            var messageCount = Math.Min(client.Inbox.Count, request.MaxReturnedEmails ?? 10);
-
             var emailIds = new List<UniqueId>();
             if (!string.IsNullOrWhiteSpace(request.MessageId))
             {
@@ -195,7 +206,8 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
 
             var distinctEmailIds = emailIds.Distinct().ToList();
             
-            messageCount = distinctEmailIds.Any() ? distinctEmailIds.Count : messageCount;
+            var messageCount = client.Inbox.Count;
+            messageCount = Math.Min(distinctEmailIds.Any() ? distinctEmailIds.Count : messageCount, request.MaxReturnedEmails);
             Console.WriteLine($"Total messages processing: {messageCount}");
 
             List<MailMessage> messages = new();
@@ -249,85 +261,90 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
     
     static string GetEmailBody(MimeMessage message)
     {
-        // If the email contains multiple parts (multipart), find the text/plain or text/html part
-        if (message.Body is TextPart textPart)
+        // Prefer plain text over HTML
+        if (message.Body is Multipart multipart)
         {
-            return MinifyContent(textPart.Text);
-        }
-        else if (message.Body is Multipart multipart)
-        {
-            foreach (var part in multipart)
+            // First, look for a plain text part
+            var plainTextPart = multipart
+                .OfType<TextPart>()
+                .FirstOrDefault(p => !p.IsHtml);
+
+            if (plainTextPart != null)
             {
-                if (part is TextPart tp && tp.IsHtml)
-                    return MinifyContent(tp.Text); // Return minified HTML body without CSS if available
-                else if (part is TextPart tpPlain)
-                    return MinifyContent(tpPlain.Text); // Return minified plain text body
+                return CleanPlainText(plainTextPart.Text);
+            }
+
+            // If no plain text, try to extract text from HTML
+            var htmlPart = multipart
+                .OfType<TextPart>()
+                .FirstOrDefault(p => p.IsHtml);
+
+            if (htmlPart != null)
+            {
+                return ExtractTextFromHtml(htmlPart.Text);
             }
         }
+        else if (message.Body is TextPart textPart)
+        {
+            return textPart.IsHtml 
+                ? ExtractTextFromHtml(textPart.Text) 
+                : CleanPlainText(textPart.Text);
+        }
 
-        return string.Empty; // No body found
+        return string.Empty;
     }
 
-    static string MinifyContent(string html)
+    static string CleanPlainText(string text)
     {
-        // Extract content within <body> tags if they exist
-        var bodyMatch = System.Text.RegularExpressions.Regex.Match(html, @"<body[^>]*>([\s\S]*?)</body>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        if (bodyMatch.Success)
-        {
-            html = bodyMatch.Groups[1].Value;
-        }
-        
-        // Remove special characters
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"[\p{C}\u00A0\u2007\u202F]", "");
-
-        // Remove Unicode-encoded HTML fragments
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\\u[0-9,A-Z,a,z]{4,}", "");
-        
-        // Remove <style> tags and their content
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"<style[^>]*>.*?</style>", "", System.Text.RegularExpressions.RegexOptions.Singleline);
-    
-        // Remove inline style attributes
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\s+style\s*=\s*""[^""]*""", "");
-    
-        // Remove image links
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"<img[^>]+>", "");
-    
-        // Remove URLs over 100 characters long
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"https?://\S{100,}", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // Remove structural HTML tags, keeping only text content
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"</?(?:div|span|p|br|table|tr|td|thead|tbody|tfoot)[^>]*>", "");
-    
         // Remove excess whitespace
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\s+", " ").Trim();
+        return Regex
+            .Replace(text.Trim(), @"\s+", " ");
+    }
+
+    static string ExtractTextFromHtml(string html)
+    {
+        // Use HtmlAgilityPack to extract text (you'll need to add the NuGet package)
+        var doc = new HtmlAgilityPack.HtmlDocument();
+        doc.LoadHtml(html);
+        var text = doc.DocumentNode.InnerText.Trim();
+        return CleanHtmlEmail(text);
+    }
     
-        // Remove HTML comments
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"<!--.*?-->", "");
+    static string CleanHtmlEmail(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+    
+        // Replace double-escaped Unicode sequences
+        input = Regex.Replace(input, @"\\u([0-9a-fA-F]{4})", match => 
+        {
+            // Convert the hex value to an integer
+            var charCode = Convert.ToInt32(match.Groups[1].Value, 16);
+            // Convert to the actual character
+            return char.ConvertFromUtf32(charCode);
+        });
+    
+        // First decode HTML entities
+        var decoded = HttpUtility.HtmlDecode(input);
         
-        // Remove wiki style images
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\[([^\]]+)\]\([^\)]+\)", "$1");
-
-        // Remove &nbsp;
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"&nbsp;", "");
-
-        // Remove DOCTYPE
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<!DOCTYPE[^>]*>", "");
-        
-        // Remove html opening tag
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<html[^>]*>", "");
-        
-        // Remove html close tag
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<\\/html>", "");
-        
-        // Remove body opening tag
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<body[^>]*>", "");
-        
-        // Remove body close tag
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<\\/body>", "");
-        
-        // Remove head opening tag
-        html = System.Text.RegularExpressions.Regex.Replace(html, "<head>.+<\\/head>", "");
-        
-        return html;
+        // Remove URLs with comprehensive pattern
+        // This matches http/https/ftp URLs, www addresses, and common TLDs
+        decoded = Regex.Replace(
+            decoded, 
+            @"(https?|ftp)://[^\s/$.?#].[^\s]*|www\.[^\s/$.?#].[^\s]*|[^\s@]+\.(com|net|org|edu|gov|mil|co|io|app|dev|me|info|biz)[^\s,.:;""')}]*",
+            ""
+        );
+    
+        // Remove control characters and zero-width characters
+        decoded = Regex.Replace(decoded, @"[\u034F\u00AD\u200B-\u200F\u2028-\u202F]+", "");
+    
+        // Remove excessive whitespace characters
+        decoded = Regex.Replace(decoded, @"[\r\n\t]+", " ");
+    
+        // Remove multiple spaces
+        decoded = Regex.Replace(decoded, @"\s+", " ");
+    
+        // Trim the result
+        return decoded.Trim();
     }
 }
