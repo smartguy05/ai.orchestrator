@@ -19,7 +19,11 @@ public class DataController : ControllerBase
     [HttpPost]
     public async Task<object> GetData([FromBody] DataControllerRequest dataRequest)
     {
-        var stringified = dataRequest?.ServiceRequest as string ?? JsonSerializer.Serialize(dataRequest?.ServiceRequest);
+        var options = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        var stringified = dataRequest?.ServiceRequest as string ?? JsonSerializer.Serialize(dataRequest?.ServiceRequest, options);
         if (dataRequest is null || string.IsNullOrWhiteSpace(stringified))
         {
             return new

@@ -23,7 +23,11 @@ public class WebhookCommand: CommandBase<ServiceRequest,ServiceConfig>
             {
                 serviceRequest.Value
             };
-            var json = JsonSerializer.Serialize(content);
+            var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            var json = JsonSerializer.Serialize(content, options);
             StringContent sContent = new StringContent(json, Encoding.UTF8, "application/json");
             return await httpClient.PostAsync(new Uri(webhook.Url), sContent);
         }
