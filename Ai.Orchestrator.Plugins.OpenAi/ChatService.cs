@@ -4,16 +4,27 @@ using System.Text;
 using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
+using Ai.Orchestrator.Models.Configuration;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
+using Ai.Orchestrator.Services;
 
 namespace Ai.Orchestrator.Plugins.OpenAi;
 
 public class ChatService
 {
+    private readonly JsonSerializerOptions _serializerOptions = new ()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+    
     public ChatService()
     {
         MessageCache.Init();
     }
+    
+    // todo: uncomment with task scheduler work
+    // private ScheduledTask _pendingScheduledTask = null;
     
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
         Dictionary<string, IEnumerable<string>> serviceFunctions, int attempt)
@@ -107,6 +118,245 @@ public class ChatService
         return await ProcessResponse(choice, request, messages, serviceFunctions);
     }
     
+    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions)
+    {
+        switch (choice.FinishReason)
+        {
+            case ChatFinishReasons.Stop:
+            {
+                var response = choice.Message.GetProperty("content").GetString(); 
+                messages.Add(new ()
+                {
+                    Role = ChatMessageTypes.Assistant,
+                    Content = response,
+                });
+                await MessageCache.SaveCachedMessages(request.ConversationId, messages);
+                return new {
+                    request.ConversationId,
+                    Result = response
+                };
+            }
+            case ChatFinishReasons.ToolCalls:
+            {
+                var requests = new List<OrchestratorRequest>();
+                // todo: uncomment with task scheduler work
+                // var scheduledTasks = 0;
+                // var lastScheduledTaskToolCallId = string.Empty;
+                try
+                {
+                    using JsonDocument doc = JsonDocument.Parse(choice.Message.ToString());
+                    var root = doc.RootElement;
+                    var toolCallsResponse = root.Deserialize<ToolCallsResponse>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    messages.Add(new ()
+                    {
+                        Role = ChatMessageTypes.Assistant,
+                        ToolCallId = null,
+                        Content = null,
+                        ToolCalls = toolCallsResponse.ToolCalls,
+                        Name = null
+                    });
+                    
+                    foreach (var (toolCall, index) in toolCallsResponse.ToolCalls.Select((call, idx) => (call, idx)))
+                    {
+                        var serviceFunction = serviceFunctions
+                            .FirstOrDefault(w => w.Value.ToList().Contains(toolCall.Function.Name));
+                        using var argumentsJson = JsonDocument.Parse(toolCall.Function.Arguments);
+                    
+                        var serviceRequest = new Dictionary<string, object>();
+                        
+                        serviceRequest.Add("method", toolCall.Function.Name);
+                        serviceRequest.Add("requestingService", "Ai.Orchestrator.Plugins.OpenAi");
+                        serviceRequest.Add("conversationId", request.ConversationId);
+                        foreach (var property in argumentsJson.RootElement.EnumerateObject())
+                        {
+                            if (!serviceRequest.ContainsKey(property.Name))
+                            {
+                                serviceRequest.Add(char.ToLowerInvariant(property.Name[0]) + property.Name.Substring(1)
+                                    , property.Value);
+                            }
+                        }
+                        
+                        if (toolCall.Function.Name == "schedule_task")
+                        {
+                            // todo: uncomment with task scheduler work
+                            // var taskExpiration = serviceRequest.TryGetValue("expiration", out var expiration)
+                            //     ? expiration switch
+                            //     {
+                            //         string stringExpiration => stringExpiration,
+                            //         JsonElement jsonExpiration => jsonExpiration.GetString(),
+                            //         _ => null
+                            //     }
+                            //     : null;
+                            // var taskRecurring = serviceRequest.TryGetValue("recurring", out var recurring) && recurring switch
+                            // {
+                            //     bool boolRecurring => boolRecurring,
+                            //     JsonElement jsonRecurring => jsonRecurring.GetBoolean(),
+                            //     _ => false
+                            // };
+                            // var taskTimeout = serviceRequest.TryGetValue("timeout", out var timeout)
+                            //     ? timeout switch
+                            //     {
+                            //         string stringTimeout => int.TryParse(stringTimeout, out var stringTimeoutInt) ? stringTimeoutInt : null,
+                            //         JsonElement jsonTimeout => jsonTimeout.TryGetInt32(out var intVal) ? intVal : null,
+                            //         _ => (int?)null
+                            //     }
+                            //     : null;
+                            // var taskName = serviceRequest.TryGetValue("name", out var name)
+                            //     ? name switch
+                            //     {
+                            //         string stringName => stringName,
+                            //         JsonElement jsonName => jsonName.GetString(),
+                            //         _ => null
+                            //     }
+                            //     : null;
+                            // var taskDescription = serviceRequest.TryGetValue("description", out var description)
+                            //     ? description switch
+                            //     {
+                            //         string stringDescription => stringDescription,
+                            //         JsonElement jsonDescription => jsonDescription.GetString(),
+                            //         _ => null
+                            //     }
+                            //     : null;
+                            //
+                            // _pendingScheduledTask = new ScheduledTask
+                            // {
+                            //     Description = taskDescription,
+                            //     Name = taskName,
+                            //     Expiration = taskExpiration,
+                            //     Timeout = taskTimeout,
+                            //     Recurring = taskRecurring
+                            // };
+                            //
+                            // messages.Add(new ChatMessageHistory
+                            // {
+                            //     Role = ChatMessageTypes.Tool,
+                            //     Content = $"Scheduled task '{_pendingScheduledTask.Name}' pending",
+                            //     ToolCallId = request.ToolCallId
+                            // });
+                            continue;
+                        }
+
+                        // todo: uncomment with task scheduler work
+                        // if (_pendingScheduledTask is not null)
+                        // {
+                            // Console.WriteLine("Scheduling task");
+                            // _pendingScheduledTask.OrchestratorRequest = new OrchestratorRequest
+                            // {
+                            //     Service = serviceFunction.Key,
+                            //     ServiceRequest = JsonSerializer.Serialize(serviceRequest, _serializerOptions),
+                            //     ToolCallId = toolCall.Id,
+                            //     ServiceFunctions = serviceFunctions,
+                            //     Messages = messages
+                            // };
+                            // Console.WriteLine(JsonSerializer.Serialize(_pendingScheduledTask, _serializerOptions));
+                            //
+                            //
+                            // var taskScheduler = ServiceResolver.GetTaskScheduler();
+                            // await taskScheduler.AddScheduledTask(_pendingScheduledTask);
+                            //
+                            // messages.Add(new ChatMessageHistory
+                            // {
+                            //     Role = ChatMessageTypes.Tool,
+                            //     Content = $"Scheduled task '{_pendingScheduledTask.Name}' scheduled",
+                            //     ToolCallId = request.ToolCallId
+                            // });
+                            // _pendingScheduledTask = null;
+                            // scheduledTasks++;
+                            // lastScheduledTaskToolCallId = request.ToolCallId;
+                        // }
+                        // else
+                        // {
+                            Console.WriteLine("Tool call required");
+                            Console.WriteLine(JsonSerializer.Serialize(messages, _serializerOptions));
+                            requests.Add(new OrchestratorRequest
+                            {
+                                Service = serviceFunction.Key,
+                                ServiceRequest = JsonSerializer.Serialize(serviceRequest, _serializerOptions),
+                                ToolCallId = toolCall.Id,
+                                ServiceFunctions = serviceFunctions,
+                                Messages = messages
+                            });
+                        // }
+                    }
+                    
+                    await MessageCache.SaveCachedMessages(request.ConversationId, messages);
+
+                    // todo: uncomment with task scheduler work
+                    // if (scheduledTasks > 0)
+                    // {
+                    //     requests.Add(new OrchestratorRequest
+                    //     {
+                    //         Service = "Ai.Orchestrator.Plugins.Telegram",
+                    //         ServiceRequest = JsonSerializer.Serialize(new ServiceRequest(), _serializerOptions),
+                    //         ToolCallId = lastScheduledTaskToolCallId,
+                    //         ServiceFunctions = serviceFunctions,
+                    //         Messages = messages
+                    //     });
+                    // }
+                    
+                    if (requests.Count == 1)
+                    {
+                        return requests.First();
+                    }
+
+                    return requests;
+                }
+                catch (Exception e)
+                {
+                    throw new Exception($"An error occurred processing return value: {JsonSerializer.Serialize(choice, _serializerOptions)}", e);
+                }
+            }
+            case ChatFinishReasons.Length:
+            {
+                throw new NotImplementedException("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
+            }
+            case ChatFinishReasons.ContentFilter:
+            {
+                throw new NotImplementedException("Omitted content due to a content filter flag.");
+            }
+            case ChatFinishReasons.FunctionCall:
+            {
+                throw new NotImplementedException("Deprecated in favor of tool calls.");
+            }
+            default:
+            {
+                throw new NotImplementedException(choice.FinishReason);
+            }
+        }
+    }
+    
+    private async Task<HttpResponseMessage> SendRequest(ServiceConfig config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
+    {
+        var validRoles = new List<string>
+        {
+            ChatMessageTypes.User,
+            ChatMessageTypes.Tool
+        };
+        var lastMessageRole = messages.Last().Role.ToLower();
+        if (messages.Count == 0 || !validRoles.Contains(lastMessageRole))
+        {
+            return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("Last message must be a user message")
+            };
+        }
+        
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(300); // Set timeout to 300 seconds (5 minutes)
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
+        
+        var oAiRequest = new ApiRequest
+        {
+            Model = request.Model,
+            Messages = messages,
+            Tools = tools
+        };
+        var body = JsonSerializer.Serialize(oAiRequest, _serializerOptions);
+        var content = new StringContent(body, Encoding.UTF8, "application/json");
+
+        return await httpClient.PostAsync($"{config.OpenAiUrl}/chat/completions", content);
+    }
+    
     private async Task<List<ChatMessageHistory>> UploadImageAsync(ServiceConfig config, string photo, List<ChatMessageHistory> messages, string conversationId)
     {
         using var content = new MultipartFormDataContent();
@@ -125,7 +375,7 @@ public class ChatService
             httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
             
             var response = await httpClient.PostAsync(
-                "https://api.openai.com/v1/files", 
+                $"{config.OpenAiUrl}/files", 
                 content
             );
 
@@ -148,7 +398,7 @@ public class ChatService
                             {
                                 file_id = result.Id
                             }
-                        }));
+                        }, _serializerOptions));
                         messages.Last().Content = contentList;
                     }
                     else
@@ -203,7 +453,7 @@ public class ChatService
         {
             if (messages[i].Content is not null && messages[i].Content is not string)
             {
-                var content = CleanMessage(JsonSerializer.Serialize(messages[i].Content));
+                var content = CleanMessage(JsonSerializer.Serialize(messages[i].Content, _serializerOptions));
                 
                 var newMessage = new ChatMessageHistory
                 {
@@ -220,9 +470,6 @@ public class ChatService
     
     private string CleanMessage(string message)
     {
-        // Remove excess backslashes
-        message = message.Replace("\\", "");
-        
         // Remove specific Unicode escape sequences
         message = System.Text.RegularExpressions.Regex.Replace(message, @"\\u[0-9a-fA-F]{4}", "");
     
@@ -264,7 +511,7 @@ public class ChatService
                     {
                         type = "text", 
                         text = request.UserPrompt 
-                    }));
+                    }, _serializerOptions));
                     messages.Last().Content = contentList;
                 }
                 else
@@ -351,152 +598,6 @@ public class ChatService
         return response.IsSuccessStatusCode;
     }
 
-    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions)
-    {
-        switch (choice.FinishReason)
-        {
-            case ChatFinishReasons.Stop:
-            {
-                var response = choice.Message.GetProperty("content").GetString(); 
-                messages.Add(new ()
-                {
-                    Role = ChatMessageTypes.Assistant,
-                    Content = response,
-                });
-                await MessageCache.SaveCachedMessages(request.ConversationId, messages);
-                return new {
-                    request.ConversationId,
-                    Result = response
-                };
-            }
-            case ChatFinishReasons.ToolCalls:
-            {
-                var requests = new List<OrchestratorRequest>();
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(choice.Message.ToString());
-                    var root = doc.RootElement;
-                    var toolCallsResponse = root.Deserialize<ToolCallsResponse>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    messages.Add(new ()
-                    {
-                        Role = ChatMessageTypes.Assistant,
-                        ToolCallId = null,
-                        Content = null,
-                        ToolCalls = toolCallsResponse.ToolCalls,
-                        Name = null
-                    });
-                    foreach (var toolCall in toolCallsResponse.ToolCalls)
-                    {
-                        var serviceFunction = serviceFunctions
-                            .FirstOrDefault(w => w.Value.ToList().Contains(toolCall.Function.Name));
-                        using var argumentsJson = JsonDocument.Parse(toolCall.Function.Arguments);
-                    
-                        var serviceRequest = new Dictionary<string, object>();
-                        serviceRequest.Add("method", toolCall.Function.Name);
-                        serviceRequest.Add("requestingService", "Ai.Orchestrator.Plugins.OpenAi");
-                        serviceRequest.Add("conversationId", request.ConversationId);
-                        foreach (JsonProperty property in argumentsJson.RootElement.EnumerateObject())
-                        {
-                            if (!serviceRequest.ContainsKey("conversationId"))
-                            {
-                                serviceRequest.Add(char.ToLowerInvariant(property.Name[0]) + property.Name.Substring(1)
-                                    , property.Value);
-                            }
-                        }
-                        var stringified = JsonSerializer.Serialize(serviceRequest);
-                    
-                        Console.WriteLine("Tool call required");
-                        Console.WriteLine(JsonSerializer.Serialize(messages));
-
-                        requests.Add(new OrchestratorRequest
-                        {
-                            Service = serviceFunction.Key,
-                            ServiceRequest = stringified,
-                            ToolCallId = toolCall.Id,
-                            ServiceFunctions = serviceFunctions,
-                            Messages = messages
-                        });
-                    }
-                    
-                    await MessageCache.SaveCachedMessages(request.ConversationId, messages);
-
-                    if (requests.Count == 1)
-                    {
-                        return requests.First();
-                    }
-
-                    return requests;
-                }
-                catch (Exception e)
-                {
-                    throw new Exception($"An error occurred processing return value: {JsonSerializer.Serialize(choice)}", e);
-                }
-            }
-            case ChatFinishReasons.Length:
-            {
-                throw new NotImplementedException("Incomplete model output due to MaxTokens parameter or token limit exceeded.");
-            }
-            case ChatFinishReasons.ContentFilter:
-            {
-                throw new NotImplementedException("Omitted content due to a content filter flag.");
-            }
-            case ChatFinishReasons.FunctionCall:
-            {
-                throw new NotImplementedException("Deprecated in favor of tool calls.");
-            }
-            default:
-            {
-                throw new NotImplementedException(choice.FinishReason);
-            }
-        }
-    }
-    
-    private bool ContainsFileUrl(List<ChatMessageHistory> messages)
-    {
-        return messages.Any(message => 
-            message.Content is JsonElement jsonElement && 
-            jsonElement.ValueKind == JsonValueKind.Array && 
-            jsonElement.EnumerateArray().Any(item => 
-                item.TryGetProperty("type", out var typeProperty) && 
-                typeProperty.GetString() == "file_url")
-        );
-    }
-    
-    private async Task<HttpResponseMessage> SendRequest(ServiceConfig config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
-    {
-        var validRoles = new List<string>
-        {
-            ChatMessageTypes.User,
-            ChatMessageTypes.Tool
-        };
-        var lastMessageRole = messages.Last().Role.ToLower();
-        if (messages.Count == 0 || !validRoles.Contains(lastMessageRole))
-        {
-            return new HttpResponseMessage(System.Net.HttpStatusCode.BadRequest)
-            {
-                Content = new StringContent("Last message must be a user message")
-            };
-        }
-        
-        using var httpClient = new HttpClient();
-        httpClient.Timeout = TimeSpan.FromSeconds(300); // Set timeout to 300 seconds (5 minutes)
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
-        
-        var oAiRequest = new ApiRequest
-        {
-            Model = request.Model,
-            Messages = messages,
-            Tools = tools
-        };
-        var options = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-        var body = JsonSerializer.Serialize(oAiRequest, options);
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
-
-        return await httpClient.PostAsync(config.OpenAiUrl, content);
-    }
     
     private string AddContext(string systemPrompt, string conversationId)
     {

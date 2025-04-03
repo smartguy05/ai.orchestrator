@@ -1,7 +1,8 @@
 using Ai.Orchestrator.Middleware;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Services;
-using TaskScheduler = Ai.Orchestrator.Services.TaskScheduler;
+// todo: uncomment with task scheduler work
+// using TaskScheduler = Ai.Orchestrator.Services.TaskScheduler;
 
 namespace Ai.Orchestrator;
 
@@ -20,6 +21,7 @@ class Program
         var app = builder.Build();
 
         var pluginService = app.Services.GetRequiredService<IPluginService>();
+        // todo: uncomment with task scheduler work
         // var taskScheduler = app.Services.GetRequiredService<TaskScheduler>();
         ServiceResolver.Initialize(app.Services);
         
@@ -44,6 +46,7 @@ class Program
         }
         finally
         {
+            // todo: uncomment with task scheduler work
             // taskScheduler?.Dispose();
             await pluginService?.DisposePlugins();    
         }

@@ -37,6 +37,7 @@ Plugins:
 - **Python Runner**: Run python scripts
 - **Memos**: Memos integration with locally hosted (UseMemos server)[https://www.usememos.com/]
 - **Web Search**: Add internet search results for context
+- **Home Assistant Assist**: Communicate with your Home Assistant instance using the Assist API
 
 Planned:
 
@@ -118,6 +119,8 @@ NOTE: This example is using the TextController endpoint
 - A modern **IDE** or text editor (e.g., Visual Studio, Rider, VS Code)
 - Basic knowledge of C# and .NET Core
 - Instance of Redis running (I use docker desktop on Windows)
+- Enable Key Space Events in Redis `CONFIG SET notify-keyspace-events KEA
+`
 
 ### Installation
 
