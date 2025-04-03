@@ -11,7 +11,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "PluginDirectory": "Plugins",
         "ConfigDirectory": "Configs",
-        "ActivePlugins": "Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi,Ai.Orchestrator.Plugins.SupportChannelKb,Ai.Orchestrator.Plugins.WebSearch,Ai.Orchestrator.Plugins.PythonRunner,Ai.Orchestrator.Plugins.Telegram",
+        "ActivePlugins": "Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi,Ai.Orchestrator.Plugins.SupportChannelKb,Ai.Orchestrator.Plugins.WebSearch,Ai.Orchestrator.Plugins.PythonRunner,Ai.Orchestrator.Plugins.Telegram,Ai.Orchestrator.Plugins.HomeAssistantAssist",
         "RedisConnectionString": "localhost:6379",
         "RedisConversationSubject": "openai.plugin"
       }
