@@ -15,7 +15,7 @@ public record ServiceRequest: IPluginServiceRequest
     public string Sender { get; set; }
     public string SearchSubject { get; set; }
     public string MessageId { get; set; }
-    public int? MaxReturnedEmails { get; set; }
+    public int MaxReturnedEmails { get; set; } = 10;
     public bool UnreadOnly { get; set; }
     public string EmailsSentAfter { get; set; }
     public string EmailsSentBefore { get; set; }

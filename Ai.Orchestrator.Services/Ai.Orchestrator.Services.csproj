@@ -8,8 +8,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj" />
-      <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
+      <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj" />
+    </ItemGroup>
 </Project>

@@ -1,4 +1,6 @@
-﻿using Ai.Orchestrator.Models;
+﻿using System.Text.Json;
+using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Dto;
 using Ai.Orchestrator.Models.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,8 +17,26 @@ public class DataController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<object> GetData([FromBody] OrchestratorRequest request)
+    public async Task<object> GetData([FromBody] DataControllerRequest dataRequest)
     {
+        var options = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        var stringified = dataRequest?.ServiceRequest as string ?? JsonSerializer.Serialize(dataRequest?.ServiceRequest, options);
+        if (dataRequest is null || string.IsNullOrWhiteSpace(stringified))
+        {
+            return new
+            {
+                Success = false,
+                Message = "Request is empty"
+            };
+        }
+        var request = new OrchestratorRequest
+        {
+            Service = dataRequest.Plugin,
+            ServiceRequest = stringified
+        };
         return await _orchestrator.ProcessRequest(request);
     }
 

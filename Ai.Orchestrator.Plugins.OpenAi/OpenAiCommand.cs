@@ -1,6 +1,6 @@
 ﻿using Ai.Orchestrator.Models.Interfaces;
-using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Extensions;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
 
@@ -25,6 +25,7 @@ public class OpenAiCommand : ICommand
         if (serviceRequest is not null)
         {
             serviceRequest.SystemPrompt ??= config.DefaultSystemPrompt;
+            serviceRequest.Model ??= config.Model;
         }
 
         var service = new ChatService();
@@ -36,6 +37,6 @@ public class OpenAiCommand : ICommand
             }
             serviceRequest.Messages = request.Messages;
         }
-        return await service.CompleteChat(serviceRequest, config, request.ServiceFunctions);
+        return await service.CompleteChat(serviceRequest, config, request.ServiceFunctions, 1);
     }
 }

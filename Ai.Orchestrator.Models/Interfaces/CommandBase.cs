@@ -24,4 +24,9 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
     }
 
     public abstract Task<object> DoWork(T serviceRequest, TU config, IEnumerable<ToolCall> availableToolCalls);
+
+    public virtual Task<object> Initialize(string config)
+    {
+        return Task.FromResult<object>(null);
+    }
 }

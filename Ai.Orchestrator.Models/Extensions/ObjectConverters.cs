@@ -32,11 +32,9 @@ public static class ObjectConverters
     {
         if (request is not null)
         {
-            using JsonDocument doc = JsonDocument.Parse(request.ToString());
-            var element = doc.RootElement;
-            return element.Deserialize<T>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true});
+            return request is string stringRequest ? JsonSerializer.Deserialize<T>(stringRequest, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) : request as T;
         }
 
-        return default;
+        return null;
     }
 }

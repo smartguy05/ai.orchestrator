@@ -40,7 +40,11 @@ public class Orchestrator: IOrchestrator
         Console.WriteLine("Orchestrator ProcessRequest");
         if (response is OrchestratorRequest newRequest)
         {
-            Console.WriteLine(JsonSerializer.Serialize(newRequest.Messages));
+            var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            Console.WriteLine(JsonSerializer.Serialize(newRequest.Messages, options));
             return AddRequestData(await ProcessRequest(newRequest), request);
         } 
         
@@ -89,6 +93,10 @@ public class Orchestrator: IOrchestrator
         }
         
         var processedMessages = messages.ToList();
+        var options = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         string lastToolCallId = null;
         for (var i = 0; i < requestList.Count; i++)
@@ -105,7 +113,7 @@ public class Orchestrator: IOrchestrator
             var toolResponseMessage = new ChatMessageHistory
             {
                 Role = ChatMessageTypes.Tool,
-                Content = result is string ? result : JsonSerializer.Serialize(result),
+                Content = result is string ? result : JsonSerializer.Serialize(result, options),
                 ToolCallId = toolCall.Id
             };
             processedMessages.Add(toolResponseMessage);
@@ -137,7 +145,11 @@ public class Orchestrator: IOrchestrator
                 chain.Messages = orchestratorRequest.Messages;
             }
             // chain.Data = orchestratorRequest.Data;
-            Console.WriteLine(JsonSerializer.Serialize(chain.Messages));
+            var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+            Console.WriteLine(JsonSerializer.Serialize(chain.Messages, options));
             return chain;
         }
 

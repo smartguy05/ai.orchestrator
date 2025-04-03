@@ -6,7 +6,6 @@ public interface IOrchestratorRequest
 {
     public string Service { get; set; }
     public object ServiceRequest { get; set; }
-    public Dictionary<string, object> Data { get; set; }
     public List<ChatMessageHistory> Messages { get; set; }
     public string ToolCallId { get; set; }
     public Dictionary<string, IEnumerable<string>> ServiceFunctions { get; set; }

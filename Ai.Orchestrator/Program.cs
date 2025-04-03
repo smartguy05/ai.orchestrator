@@ -1,32 +1,51 @@
 using Ai.Orchestrator.Middleware;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Ai.Orchestrator.Models.Interfaces;
+using Ai.Orchestrator.Services;
+using TaskScheduler = Ai.Orchestrator.Services.TaskScheduler;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace Ai.Orchestrator;
 
-builder.Services.AddControllers();
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services
-    .AddEndpointsApiExplorer()
-    .AddSwaggerGen()
-    .RegisterOrchestratorMiddleware();
+        builder.Services.AddControllers();
+        builder.Services
+            .AddEndpointsApiExplorer()
+            .AddSwaggerGen()
+            .RegisterOrchestratorMiddleware();
 
-var app = builder.Build();
+        var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-// todo: re-enable after implementing web admin
-// if (app.Environment.IsDevelopment())
-// {
-    app.UseSwagger()
-        .UseSwaggerUI();
-// }
+        var pluginService = app.Services.GetRequiredService<IPluginService>();
+        // var taskScheduler = app.Services.GetRequiredService<TaskScheduler>();
+        ServiceResolver.Initialize(app.Services);
+        
+        await pluginService.InitializePlugins();
+        
+        app.UseSwagger()
+            .UseSwaggerUI();
 
-app.UseHttpLogging()
-    .UseHttpsRedirection()
-    .UseAuthorization();
+        app.UseHttpLogging()
+            .UseHttpsRedirection()
+            .UseAuthorization();
 
-app.MapControllers();
+        app.MapControllers();
 
-app.Run();
+        try
+        {
+            await app.RunAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        finally
+        {
+            // taskScheduler?.Dispose();
+            await pluginService?.DisposePlugins();    
+        }
+    }   
+}

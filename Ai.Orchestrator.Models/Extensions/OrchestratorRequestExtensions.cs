@@ -13,10 +13,14 @@ public static class OrchestratorRequestExtensions
             var chatMessages = request.Messages.ToList();
             if (chatMessages.Any())
             {
+                var options = new JsonSerializerOptions
+                {
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
                 chatMessages.Add(new ChatMessageHistory
                 {
                     Role = ChatMessageTypes.Tool,
-                    Content = data is string ? data : JsonSerializer.Serialize(data),
+                    Content = data is string ? data : JsonSerializer.Serialize(data, options),
                     ToolCallId = request.ToolCallId
                 });
                 string conversationId = null;

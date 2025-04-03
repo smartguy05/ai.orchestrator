@@ -23,10 +23,14 @@ public class TextController : ControllerBase
         {
             textRequest.SystemPrompt,
             textRequest.UserPrompt,
-            Model = "gpt-4o-mini", // todo: make this a setting
+            Model = (string)null, // will be populated with setting
             textRequest.ConversationId
         };
-        var stringified = JsonSerializer.Serialize(serviceRequest);
+        var options = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        var stringified = JsonSerializer.Serialize(serviceRequest, options);
         var request = new OrchestratorRequest
         {
             Service = "Ai.Orchestrator.Plugins.OpenAI",

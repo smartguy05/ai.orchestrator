@@ -16,12 +16,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj">
-        </ProjectReference>
         <ProjectReference Include="..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj">
             <Private>false</Private>
             <ExcludeAssets>runtime</ExcludeAssets>
         </ProjectReference>
     </ItemGroup>
-
 </Project>

@@ -9,7 +9,12 @@ public static class SettingsExtensions
     {
         if (!string.IsNullOrWhiteSpace(config))
         {
-            return JsonSerializer.Deserialize<T>(config, new JsonSerializerOptions { PropertyNameCaseInsensitive = true});
+            var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                PropertyNameCaseInsensitive = true
+            };
+            return JsonSerializer.Deserialize<T>(config, options);
         }
 
         return default;

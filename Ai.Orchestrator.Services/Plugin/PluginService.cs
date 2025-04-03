@@ -137,6 +137,86 @@ public class PluginService : IPluginService
         throw new Exception("Invalid plugin specified!");
     }
     
+    public async Task InitializePlugins()
+    {
+        var plugins = _config.ActivePlugins.Split(",");
+        if (!plugins.Any())
+        {
+            throw new Exception("Unable to find specified plugin");
+        }
+
+        foreach (var plugin in plugins)
+        {
+            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
+            _logger.LogInformation($"-- Plugin {plugin} Loaded --");
+                
+            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
+            if (!string.IsNullOrWhiteSpace(config))
+            {
+                _logger.LogInformation($"-- Plugin {plugin} Config Loaded --");   
+            }
+            var commands = CreateCommands(pluginAssembly).ToList();
+
+            var tasks = new List<Task<object>>();
+            _logger.LogInformation($"-- Total Commands: {commands.Count} --");
+            foreach (var command in commands)
+            {
+                tasks.Add(command?.Initialize(config));
+                _logger.LogInformation($"-- Command {command.Name} Initialized --");
+            }
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
+    }
+
+    public async Task DisposePlugins()
+    {
+        var plugins = _config.ActivePlugins.Split(",");
+        if (!plugins.Any())
+        {
+            throw new Exception("Unable to find specified plugin");
+        }
+
+        foreach (var plugin in plugins)
+        {
+            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
+            _logger.LogInformation($"-- Plugin {plugin} Loaded --");
+                
+            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
+            if (!string.IsNullOrWhiteSpace(config))
+            {
+                _logger.LogInformation($"-- Plugin {plugin} Config Loaded --");   
+            }
+            var commands = CreateCommands(pluginAssembly).ToList();
+
+            var tasks = new List<Task>();
+            _logger.LogInformation($"-- Total Commands: {commands.Count} --");
+            foreach (var command in commands)
+            {
+                tasks.Add(command.Dispose());
+                _logger.LogInformation($"-- Disposing of command {command.Name} --");
+            }
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
+    }
+    
     private static Assembly LoadPlugin(string relativePath)
     {
         var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
