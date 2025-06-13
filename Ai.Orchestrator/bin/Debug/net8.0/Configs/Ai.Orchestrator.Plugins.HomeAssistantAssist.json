@@ -1,0 +1,27 @@
+{
+	"name": "Ai.Orchestrator.Plugins.OpenAi",
+    "description": "Open AI integration",
+    "tools": [
+    	{
+    		"type": "function",
+    		"function": {
+    			"name": "control_home",
+    			"description": "Use this function to talk with Home Assistant in natural language to control smart home devices and get the state of those devices.",
+    			"parameters": {
+    				"type": "object",
+    				"properties": {
+    					"query": {
+    						"type": "string",
+    						"description": "The natural language command to send to the Home Assistant LLM to control home devices or get the state of those devices."
+    					}
+    				},
+    				"required": [
+    					"query"
+    				]
+    			}
+    		}
+    	}
+    ],
+    "homeAssistApiKey": "your-api-key-here",
+    "homeAssistUrl": "http://localhost/api"
+}

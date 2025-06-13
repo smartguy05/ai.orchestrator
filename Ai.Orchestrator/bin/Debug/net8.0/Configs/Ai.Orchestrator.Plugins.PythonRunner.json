@@ -1,0 +1,25 @@
+{
+    "name": "Ai.Orchestrator.PythonRunner",
+    "description": "Plugin used to run python scripts",
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "run_python_script",
+                "description": "Use this function to run a python script.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pythonScript": {
+                            "type": "string",
+                            "description": "The string value of the python script to run."
+                        }
+                    },
+                    "required": [
+                        "pythonScript"
+                    ]
+                }
+            }
+        }
+    ]
+}

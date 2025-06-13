@@ -1,0 +1,31 @@
+{
+    "name": "Ai.Orchestrator.WebSearch",
+    "description": "Plugin to search the web using OpenAPI compliant search engine",
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query to send to the search engine"
+                        },
+                        "maxResults": {
+                            "type": "number",
+                            "description": "The maximum number of results to retrieve, default is 5"
+                        }
+                    },
+                    "required": [
+                        "query"
+                    ]
+                }
+            }
+        }
+    ],
+    "WebSearchUrl": "https://kagi.com/api/v0/search",
+    "WebSearchApiKey": "api-key"
+}
