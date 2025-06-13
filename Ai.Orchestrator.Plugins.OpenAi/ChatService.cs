@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
-using Ai.Orchestrator.Models.Configuration;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
 using Ai.Orchestrator.Services;
 
@@ -23,8 +22,7 @@ public class ChatService
         MessageCache.Init();
     }
     
-    // todo: uncomment with task scheduler work
-    // private ScheduledTask _pendingScheduledTask = null;
+    private ScheduledTask _pendingScheduledTask;
     
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
         Dictionary<string, IEnumerable<string>> serviceFunctions, int attempt)
@@ -115,10 +113,10 @@ public class ChatService
         //     await CleanupExpiredFilesAsync(config);
         // }
 
-        return await ProcessResponse(choice, request, messages, serviceFunctions);
+        return await ProcessResponse(choice, request, messages, serviceFunctions, config);
     }
     
-    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions)
+    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions, ServiceConfig config)
     {
         switch (choice.FinishReason)
         {
@@ -139,9 +137,7 @@ public class ChatService
             case ChatFinishReasons.ToolCalls:
             {
                 var requests = new List<OrchestratorRequest>();
-                // todo: uncomment with task scheduler work
-                // var scheduledTasks = 0;
-                // var lastScheduledTaskToolCallId = string.Empty;
+                var scheduledTasks = 0;
                 try
                 {
                     using JsonDocument doc = JsonDocument.Parse(choice.Message.ToString());
@@ -153,7 +149,7 @@ public class ChatService
                         ToolCallId = null,
                         Content = null,
                         ToolCalls = toolCallsResponse.ToolCalls,
-                        Name = null
+                        Name = "tool_calls"
                     });
                     
                     foreach (var (toolCall, index) in toolCallsResponse.ToolCalls.Select((call, idx) => (call, idx)))
@@ -166,7 +162,6 @@ public class ChatService
                         
                         serviceRequest.Add("method", toolCall.Function.Name);
                         serviceRequest.Add("requestingService", "Ai.Orchestrator.Plugins.OpenAi");
-                        serviceRequest.Add("conversationId", request.ConversationId);
                         foreach (var property in argumentsJson.RootElement.EnumerateObject())
                         {
                             if (!serviceRequest.ContainsKey(property.Name))
@@ -178,96 +173,104 @@ public class ChatService
                         
                         if (toolCall.Function.Name == "schedule_task")
                         {
-                            // todo: uncomment with task scheduler work
-                            // var taskExpiration = serviceRequest.TryGetValue("expiration", out var expiration)
-                            //     ? expiration switch
-                            //     {
-                            //         string stringExpiration => stringExpiration,
-                            //         JsonElement jsonExpiration => jsonExpiration.GetString(),
-                            //         _ => null
-                            //     }
-                            //     : null;
-                            // var taskRecurring = serviceRequest.TryGetValue("recurring", out var recurring) && recurring switch
-                            // {
-                            //     bool boolRecurring => boolRecurring,
-                            //     JsonElement jsonRecurring => jsonRecurring.GetBoolean(),
-                            //     _ => false
-                            // };
-                            // var taskTimeout = serviceRequest.TryGetValue("timeout", out var timeout)
-                            //     ? timeout switch
-                            //     {
-                            //         string stringTimeout => int.TryParse(stringTimeout, out var stringTimeoutInt) ? stringTimeoutInt : null,
-                            //         JsonElement jsonTimeout => jsonTimeout.TryGetInt32(out var intVal) ? intVal : null,
-                            //         _ => (int?)null
-                            //     }
-                            //     : null;
-                            // var taskName = serviceRequest.TryGetValue("name", out var name)
-                            //     ? name switch
-                            //     {
-                            //         string stringName => stringName,
-                            //         JsonElement jsonName => jsonName.GetString(),
-                            //         _ => null
-                            //     }
-                            //     : null;
-                            // var taskDescription = serviceRequest.TryGetValue("description", out var description)
-                            //     ? description switch
-                            //     {
-                            //         string stringDescription => stringDescription,
-                            //         JsonElement jsonDescription => jsonDescription.GetString(),
-                            //         _ => null
-                            //     }
-                            //     : null;
-                            //
-                            // _pendingScheduledTask = new ScheduledTask
-                            // {
-                            //     Description = taskDescription,
-                            //     Name = taskName,
-                            //     Expiration = taskExpiration,
-                            //     Timeout = taskTimeout,
-                            //     Recurring = taskRecurring
-                            // };
-                            //
-                            // messages.Add(new ChatMessageHistory
-                            // {
-                            //     Role = ChatMessageTypes.Tool,
-                            //     Content = $"Scheduled task '{_pendingScheduledTask.Name}' pending",
-                            //     ToolCallId = request.ToolCallId
-                            // });
+                            var taskExpiration = serviceRequest.TryGetValue("expiration", out var expiration)
+                                ? expiration switch
+                                {
+                                    string stringExpiration => stringExpiration,
+                                    JsonElement jsonExpiration => jsonExpiration.GetString(),
+                                    _ => null
+                                }
+                                : null;
+                            var taskRecurring = serviceRequest.TryGetValue("recurring", out var recurring) && recurring switch
+                            {
+                                bool boolRecurring => boolRecurring,
+                                JsonElement jsonRecurring => jsonRecurring.GetBoolean(),
+                                _ => false
+                            };
+                            var taskTimeout = serviceRequest.TryGetValue("timeout", out var timeout)
+                                ? timeout switch
+                                {
+                                    string stringTimeout => int.TryParse(stringTimeout, out var stringTimeoutInt) ? stringTimeoutInt : null,
+                                    JsonElement jsonTimeout => jsonTimeout.TryGetInt32(out var intVal) ? intVal : null,
+                                    _ => (int?)null
+                                }
+                                : null;
+                            var taskName = serviceRequest.TryGetValue("name", out var name)
+                                ? name switch
+                                {
+                                    string stringName => stringName,
+                                    JsonElement jsonName => jsonName.GetString(),
+                                    _ => null
+                                }
+                                : null;
+                            var taskDescription = serviceRequest.TryGetValue("description", out var description)
+                                ? description switch
+                                {
+                                    string stringDescription => stringDescription,
+                                    JsonElement jsonDescription => jsonDescription.GetString(),
+                                    _ => null
+                                }
+                                : null;
+                            
+                            _pendingScheduledTask = new ScheduledTask
+                            {
+                                Description = taskDescription,
+                                Name = taskName,
+                                Expiration = taskExpiration,
+                                Timeout = taskTimeout,
+                                IsRecurring = taskRecurring
+                            };
+                            
+                            messages.Add(new ChatMessageHistory
+                            {
+                                Role = ChatMessageTypes.Tool,
+                                Content = $"Scheduled task '{_pendingScheduledTask.Name}' pending",
+                                ToolCallId = request.ToolCallId,
+                                Name = "schedule_task"
+                            });
+                            
                             continue;
                         }
 
-                        // todo: uncomment with task scheduler work
-                        // if (_pendingScheduledTask is not null)
-                        // {
-                            // Console.WriteLine("Scheduling task");
-                            // _pendingScheduledTask.OrchestratorRequest = new OrchestratorRequest
-                            // {
-                            //     Service = serviceFunction.Key,
-                            //     ServiceRequest = JsonSerializer.Serialize(serviceRequest, _serializerOptions),
-                            //     ToolCallId = toolCall.Id,
-                            //     ServiceFunctions = serviceFunctions,
-                            //     Messages = messages
-                            // };
-                            // Console.WriteLine(JsonSerializer.Serialize(_pendingScheduledTask, _serializerOptions));
-                            //
-                            //
-                            // var taskScheduler = ServiceResolver.GetTaskScheduler();
-                            // await taskScheduler.AddScheduledTask(_pendingScheduledTask);
-                            //
-                            // messages.Add(new ChatMessageHistory
-                            // {
-                            //     Role = ChatMessageTypes.Tool,
-                            //     Content = $"Scheduled task '{_pendingScheduledTask.Name}' scheduled",
-                            //     ToolCallId = request.ToolCallId
-                            // });
-                            // _pendingScheduledTask = null;
-                            // scheduledTasks++;
-                            // lastScheduledTaskToolCallId = request.ToolCallId;
-                        // }
-                        // else
-                        // {
+                        if (_pendingScheduledTask is not null)
+                        {
+                            Console.WriteLine("Scheduling task");
+                            _pendingScheduledTask.OrchestratorRequest = new OrchestratorRequest
+                            {
+                                Service = serviceFunction.Key,
+                                ServiceRequest = JsonSerializer.Serialize(serviceRequest, _serializerOptions),
+                                ToolCallId = null,
+                                ServiceFunctions = serviceFunctions,
+                                Messages =
+                                [
+                                    new ChatMessageHistory
+                                    {
+                                        Role = "system",
+                                        Content = config.DefaultSystemPrompt
+                                    }
+                                ]
+                            };
+                            
+                            Console.WriteLine(JsonSerializer.Serialize(_pendingScheduledTask, _serializerOptions));
+                            
+                            var taskScheduler = ServiceResolver.GetTaskScheduler();
+                            await taskScheduler.AddScheduledTask(_pendingScheduledTask);
+                            
+                            messages.Add(new ChatMessageHistory
+                            {
+                                Role = ChatMessageTypes.Tool,
+                                Content = $"Scheduled task '{_pendingScheduledTask.Name}' scheduled",
+                                ToolCallId = request.ToolCallId,
+                                Name = "schedule_task"
+                            });
+                            _pendingScheduledTask = null;
+                            scheduledTasks++;
+                        }
+                        else
+                        {
                             Console.WriteLine("Tool call required");
                             Console.WriteLine(JsonSerializer.Serialize(messages, _serializerOptions));
+                            serviceRequest.Add("conversationId", request.ConversationId);
                             requests.Add(new OrchestratorRequest
                             {
                                 Service = serviceFunction.Key,
@@ -276,23 +279,28 @@ public class ChatService
                                 ServiceFunctions = serviceFunctions,
                                 Messages = messages
                             });
-                        // }
+                        }
                     }
                     
                     await MessageCache.SaveCachedMessages(request.ConversationId, messages);
 
-                    // todo: uncomment with task scheduler work
-                    // if (scheduledTasks > 0)
-                    // {
-                    //     requests.Add(new OrchestratorRequest
-                    //     {
-                    //         Service = "Ai.Orchestrator.Plugins.Telegram",
-                    //         ServiceRequest = JsonSerializer.Serialize(new ServiceRequest(), _serializerOptions),
-                    //         ToolCallId = lastScheduledTaskToolCallId,
-                    //         ServiceFunctions = serviceFunctions,
-                    //         Messages = messages
-                    //     });
-                    // }
+                    if (scheduledTasks > 0)
+                    {
+                        // todo: Return to AI plugin instead of short-circuiting
+                        // requests.Add(new OrchestratorRequest
+                        // {
+                        //     Service = "Ai.Orchestrator.Plugins.OpenAi",
+                        //     ServiceRequest = JsonSerializer.Serialize(request, _serializerOptions),
+                        //     ToolCallId = null,
+                        //     ServiceFunctions = serviceFunctions,
+                        //     Messages = messages
+                        // });
+                        return new
+                        {
+                            request.ConversationId,
+                            Result = "Tasks successfully scheduled!"
+                        };
+                    }
                     
                     if (requests.Count == 1)
                     {

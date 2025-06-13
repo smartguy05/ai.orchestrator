@@ -56,6 +56,51 @@ public class PluginService : IPluginService
             }
         }
 
+        var properties = new Dictionary<string, ToolProperty>();
+        properties.Add("description", new ToolProperty
+        {
+            Type = "string",
+            Description = "A description of the scheduled task."
+        });
+        properties.Add("name", new ToolProperty
+        {
+            Type = "string",
+            Description = "A name for the scheduled task."
+        });
+        properties.Add("expiration", new ToolProperty
+        {
+            Type = "string",
+            Description = "The datetime that the scheduled task should be performed at as a string. Supply either expiration or timeout."
+        });
+        properties.Add("timeout", new ToolProperty
+        {
+            Type = "number",
+            Description = "How many seconds until the scheduled task should be performed. Supply either expiration or timeout."
+        });
+        properties.Add("isRecurring", new ToolProperty
+        {
+            Type = "boolean",
+            Description = "Should this be a recurring scheduled task. If yes, true, if no, false."
+        });
+        configs.Add(new ToolCall
+        {
+            Function = new ToolFunction
+            {
+                Name = "schedule_task",
+                Description = "Use this function to run another tool function at a future date. You can also schedule recurring tasks. Example: 'In 40 minutes send an email to test@test.com with the subject: An Email Subject. In the body of the email write a love song'",
+                Parameters = new ToolParameters
+                {
+                    Type = "object",
+                    Properties = properties,
+                    Required = new List<string>
+                    {
+                        "name",
+                        "description"
+                    }
+                }
+            }
+        });
+
         return configs;
     }
     

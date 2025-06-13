@@ -3,9 +3,14 @@ Ai.Orchestrator/bin/
 Ai.Orchestrator/obj/
 Ai.Orchestrator.Common/bin/
 Ai.Orchestrator.Common/obj/
+Ai.Orchestrator.Models/bin/
+Ai.Orchestrator.Models/obj/
+Ai.Orchestrator.Services/bin/
+Ai.Orchestrator.Services/obj/
 Ai.Orchestrator.Plugins.OpenAi/bin/
 Ai.Orchestrator.Plugins.OpenAi/obj/
 Ai.Orchestrator.Plugins.Email/bin/
 Ai.Orchestrator.Plugins.Email/obj/
 Ai.Orchestrator.Plugins.Webhook/bin/
 Ai.Orchestrator.Plugins.Webhook/obj/
+Test_Plugin/Test_Plugin/obj/

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 	</PropertyGroup>
@@ -12,7 +12,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-	  <OutputPath>..\Ai.Orchestrator\bin\Debug\net7.0\Plugins\</OutputPath>
+	  <OutputPath>..\Ai.Orchestrator\bin\Debug\net8.0\Plugins\</OutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>
