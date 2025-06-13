@@ -21,10 +21,10 @@ public static class ServiceResolver
         return GetService<IPluginService>();
     }
 
-    // public static ITaskScheduler GetTaskScheduler()
-    // {
-    //     return GetService<ITaskScheduler>();
-    // }
+    public static ITaskScheduler GetTaskScheduler()
+    {
+        return GetService<ITaskScheduler>();
+    }
     
     public static T GetService<T>()
     {
