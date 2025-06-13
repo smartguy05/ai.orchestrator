@@ -16,13 +16,19 @@ class Program
         builder.Services
             .AddEndpointsApiExplorer()
             .AddSwaggerGen()
+            .AddHttpLogging(options =>
+            {
+                // Configure HTTP logging options
+                options.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.All;
+                options.RequestBodyLogLimit = 4096;
+                options.ResponseBodyLogLimit = 4096;
+            })
             .RegisterOrchestratorMiddleware();
 
         var app = builder.Build();
 
         var pluginService = app.Services.GetRequiredService<IPluginService>();
-        // todo: uncomment with task scheduler work
-        // var taskScheduler = app.Services.GetRequiredService<TaskScheduler>();
+        var taskScheduler = app.Services.GetRequiredService<ITaskScheduler>();
         ServiceResolver.Initialize(app.Services);
         
         await pluginService.InitializePlugins();
@@ -46,8 +52,6 @@ class Program
         }
         finally
         {
-            // todo: uncomment with task scheduler work
-            // taskScheduler?.Dispose();
             await pluginService?.DisposePlugins();    
         }
     }   
