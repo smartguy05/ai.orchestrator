@@ -1,9 +1,87 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ai.Orchestrator.Models.Extensions;
 
+public class FlexibleDateTimeConverter : JsonConverter<DateTime>
+{
+    private static readonly string[] DateTimeFormats = new[]
+    {
+        "yyyy-MM-ddTHH:mm:ss.fffZ",
+        "yyyy-MM-ddTHH:mm:ssZ",
+        "yyyy-MM-ddTHH:mm:ss.fff",
+        "yyyy-MM-ddTHH:mm:ss",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-dd",
+        "MM/dd/yyyy",
+        "MM/dd/yyyy HH:mm:ss",
+        "dd/MM/yyyy",
+        "dd/MM/yyyy HH:mm:ss"
+    };
+
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var stringValue = reader.GetString();
+        
+        if (string.IsNullOrEmpty(stringValue))
+            throw new JsonException("Cannot convert null or empty string to DateTime");
+
+        // Try parsing with various formats
+        foreach (var format in DateTimeFormats)
+        {
+            if (DateTime.TryParseExact(stringValue, format, null, System.Globalization.DateTimeStyles.None, out var result))
+                return result;
+        }
+
+        // Try standard parsing as fallback
+        if (DateTime.TryParse(stringValue, out var fallbackResult))
+            return fallbackResult;
+
+        throw new JsonException($"Unable to convert '{stringValue}' to DateTime");
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+    {
+        writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"));
+    }
+}
+
+public class FlexibleNullableDateTimeConverter : JsonConverter<DateTime?>
+{
+    private readonly FlexibleDateTimeConverter _baseConverter = new();
+
+    public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        return _baseConverter.Read(ref reader, typeof(DateTime), options);
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue)
+            _baseConverter.Write(writer, value.Value, options);
+        else
+            writer.WriteNullValue();
+    }
+}
+
 public static class ObjectConverters
 {
+    private static JsonSerializerOptions GetDeserializeOptions()
+    {
+        var options = new JsonSerializerOptions 
+        { 
+            PropertyNameCaseInsensitive = true
+        };
+        
+        options.Converters.Add(new FlexibleDateTimeConverter());
+        options.Converters.Add(new FlexibleNullableDateTimeConverter());
+        
+        return options;
+    }
+
     public static IEnumerable<T> GetServiceRequestArray<T>(this object request)
     {
         if (request is not null)
@@ -19,7 +97,7 @@ public static class ObjectConverters
                         .ToList() as List<T>;
                 }
                 
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var options = GetDeserializeOptions();
                 return element.EnumerateArray()
                     .Select(jsonElement => {
                         try {
@@ -49,10 +127,7 @@ public static class ObjectConverters
             return null;
         }
 
-        var deserializeOptions = new JsonSerializerOptions 
-        { 
-            PropertyNameCaseInsensitive = true
-        };
+        var deserializeOptions = GetDeserializeOptions();
 
         if (request is string stringRequest)
         {
