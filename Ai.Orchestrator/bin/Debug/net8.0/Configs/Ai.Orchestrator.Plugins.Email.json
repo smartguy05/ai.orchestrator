@@ -59,7 +59,7 @@
          "type": "function",
          "function": {
             "name": "send_email",
-            "description": "Use this function to send emails from the user's already set up email account, for example when asked something like 'Send an email to mom telling her I will be late'",
+            "description": "Use this function to send emails from the user's already set up email account. Always format the email body using HTML for attractive styling, including appropriate use of paragraphs, headings, bold text, lists, and other HTML tags to improve readability and visual appeal. Use this tool when asked something like 'Send an email to mom telling her I will be late'",
             "parameters": {
                "type": "object",
                "properties": {
@@ -73,7 +73,7 @@
                   },
                   "body": {
                      "type": "string",
-                     "description": "The HTML formatted body of the email to send."
+                     "description": "The HTML formatted body of the email to send. This should be well-structured and styled using HTML tags like <p>, <h1>, <strong>, <ul>, <ol>, etc."
                   },
                   "recipientName": {
                      "type": "string",

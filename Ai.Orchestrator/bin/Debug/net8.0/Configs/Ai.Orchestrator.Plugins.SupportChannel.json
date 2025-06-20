@@ -1,0 +1,104 @@
+{
+    "name": "Ai.Orchestrator.SupportChannel",
+    "description": "Plugin to store data in a Vector database to be used for RAG retrieval",
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_support_channels",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "searchCriteria": {
+                            "type": "string",
+                            "description": "The search query to use when looking for information to use in RAG."
+                        }
+                    },
+                    "required": [
+                        "searchCriteria"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_support_channel_collections",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                    },
+                    "required": [
+                    ]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "add_support_channel_collection",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "supportChannel": {
+                            "type": "string",
+                            "description": ""
+                        },
+                        "description": {
+                            "type": "string",
+                            "description": ""
+                        }
+                    },
+                    "required": [
+                        "supportChannel",
+                        "description"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "save_support_channel_information",
+                "description": "",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": ""
+                        },
+                        "newInformation": {
+                            "type": "string",
+                            "description": ""
+                        },
+                        "newInformationMetaData": {
+                            "type": "array",
+                            "description": ""
+                        }
+                    },
+                    "required": [
+                        "newInformation",
+                        "description"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "support_channel_health_check",
+                "description": "",
+                "parameters": {
+                    "required": []
+                }
+            }
+        }
+    ],
+    "supportChannelKbUrl": "",
+    "defaultSaveChannel": "",
+    "defaultChannelApiKey": null
+}

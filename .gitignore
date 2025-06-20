@@ -13,4 +13,8 @@ Ai.Orchestrator.Plugins.Email/bin/
 Ai.Orchestrator.Plugins.Email/obj/
 Ai.Orchestrator.Plugins.Webhook/bin/
 Ai.Orchestrator.Plugins.Webhook/obj/
+Ai.Orchestrator.Plugins.Memories/obj/
+Ai.Orchestrator.Plugins.Memories/bin/
+Ai.Orchestrator.Plugins.Mcp/obj/
+Ai.Orchestrator.Plugins.Mcp/bin/
 Test_Plugin/Test_Plugin/obj/

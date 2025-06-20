@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Ema
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.OpenAi", "..\Ai.Orchestrator.Plugins.OpenAi\Ai.Orchestrator.Plugins.OpenAi.csproj", "{4A9E376F-B71E-4552-8988-898F27B8740A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Memories", "..\Ai.Orchestrator.Plugins.Memories\Ai.Orchestrator.Plugins.Memories.csproj", "{F692A14E-6AD4-4889-9E0B-FAEDF4293ED5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,7 @@ Global
 		{4A9E376F-B71E-4552-8988-898F27B8740A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A9E376F-B71E-4552-8988-898F27B8740A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A9E376F-B71E-4552-8988-898F27B8740A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F692A14E-6AD4-4889-9E0B-FAEDF4293ED5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F692A14E-6AD4-4889-9E0B-FAEDF4293ED5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 EndGlobal
