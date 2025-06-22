@@ -14,7 +14,7 @@ public class LoggingService : ILoggingService
 
     public LoggingService()
     {
-        if (_config.LoggingPlugins == null)
+        if (_config.LoggingPlugins == null || _config.LogToConsole)
         {
             _useConsole = true;
         }
