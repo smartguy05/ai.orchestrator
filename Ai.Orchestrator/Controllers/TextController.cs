@@ -24,7 +24,8 @@ public class TextController : ControllerBase
             textRequest.SystemPrompt,
             textRequest.UserPrompt,
             Model = (string)null, // will be populated with setting
-            textRequest.ConversationId
+            textRequest.ConversationId,
+            textRequest.Agent
         };
         var options = new JsonSerializerOptions
         {

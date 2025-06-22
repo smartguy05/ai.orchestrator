@@ -37,7 +37,6 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
     
     public virtual Task<object> Initialize(string config, LogDelegate logFunction)
     {
-        Logger = logFunction;
         return Task.FromResult<object>(null);
     }
 }
