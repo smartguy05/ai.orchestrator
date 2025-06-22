@@ -2,17 +2,21 @@
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Interfaces;
+using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator.Services;
 
 public class Orchestrator: IOrchestrator
 {
     private readonly IPluginService _pluginService;
+    private readonly ILoggingService _logger;
 
     public Orchestrator(
-        IPluginService pluginService
+        IPluginService pluginService,
+        ILoggingService logger
         )
     {
+        _logger = logger;
         _pluginService = pluginService;
         MessageCache.Init();
     }
@@ -37,14 +41,14 @@ public class Orchestrator: IOrchestrator
         }
         var response = await _pluginService.RunPlugin(request);
         
-        Console.WriteLine("Orchestrator ProcessRequest");
+        await _logger.Log(LogLevel.Trace, "Orchestrator ProcessRequest");
         if (response is OrchestratorRequest newRequest)
         {
             var options = new JsonSerializerOptions
             {
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            Console.WriteLine(JsonSerializer.Serialize(newRequest.Messages, options));
+            await _logger.Log(LogLevel.Trace, JsonSerializer.Serialize(newRequest.Messages, options));
             return AddRequestData(await ProcessRequest(newRequest), request);
         } 
         
@@ -134,10 +138,10 @@ public class Orchestrator: IOrchestrator
             Messages = processedMessages
         });
     }
-
+    
     private object AddRequestData(object request, OrchestratorRequest orchestratorRequest)
     {
-        Console.WriteLine("AddRequestData Messages");
+        _logger.Log(LogLevel.Trace, "AddRequestData Messages").ConfigureAwait(false);
         if (request is OrchestratorRequest chain)
         {
             if (!chain.Messages.Any())
@@ -149,7 +153,7 @@ public class Orchestrator: IOrchestrator
             {
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
-            Console.WriteLine(JsonSerializer.Serialize(chain.Messages, options));
+            _logger.Log(LogLevel.Trace, JsonSerializer.Serialize(chain.Messages, options)).ConfigureAwait(false);
             return chain;
         }
 

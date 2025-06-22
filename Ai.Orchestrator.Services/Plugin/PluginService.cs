@@ -5,19 +5,14 @@ using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Configuration;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
+using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator.Services.Plugin;
 
 public class PluginService : IPluginService
 {
-    private readonly Config _config;
-    private readonly ILogger<PluginService> _logger;
-
-    public PluginService(ILogger<PluginService> logger)
-    {
-        _logger = logger;
-        _config = new Config();
-    }
+    private readonly Config _config = new();
+    private static LogDelegate _logger;
 
     public List<ToolCall> GetTools()
     {
@@ -153,21 +148,24 @@ public class PluginService : IPluginService
         if (plugin != null)
         {
             var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            _logger.LogInformation($"-- Plugin {plugin} Loaded --");
+            await _logger(LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
             
             var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
             if (!string.IsNullOrWhiteSpace(config))
             {
-                _logger.LogInformation($"-- Plugin {plugin} Config Loaded --");   
+                await _logger(LogLevel.Trace, $"-- Plugin {plugin} Config Loaded --");
             }
             var commands = CreateCommands(pluginAssembly).ToList();
 
             var tasks = new List<Task<object>>();
-            _logger.LogInformation($"-- Total Commands: {commands.Count} --");
+            if (commands.Count > 1)
+            {
+                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
+            }
             foreach (var command in commands)
             {
-                tasks.Add(command?.Execute(request, config, GetTools()));
-                _logger.LogInformation($"-- Command {command.Name} Started --");
+                tasks.Add(command?.Execute(request, config, GetTools(), _logger));
+                await _logger(LogLevel.Trace, $"-- Command {command.Name} Started --");
             }
             var results = (await Task.WhenAll(tasks)).ToList();
 
@@ -178,36 +176,40 @@ public class PluginService : IPluginService
 
             return results;
         }
-        _logger.LogError($"No plugin found with the name {request.Service}");
+        await _logger(LogLevel.Warning, $"No plugin found with the name {request.Service}");
         throw new Exception("Invalid plugin specified!");
     }
     
-    public async Task InitializePlugins()
+    public async Task InitializePlugins(LogDelegate logger)
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
         {
             throw new Exception("Unable to find specified plugin");
         }
+        _logger = logger;
 
         foreach (var plugin in plugins)
         {
             var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            _logger.LogInformation($"-- Plugin {plugin} Loaded --");
+            await logger(LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
                 
             var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
             if (!string.IsNullOrWhiteSpace(config))
             {
-                _logger.LogInformation($"-- Plugin {plugin} Config Loaded --");   
+                await logger(LogLevel.Trace, $"-- Plugin {plugin} Config Loaded --");
             }
             var commands = CreateCommands(pluginAssembly).ToList();
 
             var tasks = new List<Task<object>>();
-            _logger.LogInformation($"-- Total Commands: {commands.Count} --");
+            if (commands.Count > 1)
+            {
+                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
+            }
             foreach (var command in commands)
             {
-                tasks.Add(command?.Initialize(config));
-                _logger.LogInformation($"-- Command {command.Name} Initialized --");
+                tasks.Add(command?.Initialize(config, logger));
+                await logger(LogLevel.Trace, $"-- Command {command.Name} Initialized --");
             }
 
             try
@@ -216,7 +218,7 @@ public class PluginService : IPluginService
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                await logger(LogLevel.Error, e.Message);
                 throw;
             }
         }
@@ -233,21 +235,24 @@ public class PluginService : IPluginService
         foreach (var plugin in plugins)
         {
             var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            _logger.LogInformation($"-- Plugin {plugin} Loaded --");
+            await _logger( LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
                 
             var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
             if (!string.IsNullOrWhiteSpace(config))
             {
-                _logger.LogInformation($"-- Plugin {plugin} Config Loaded --");   
+                await _logger( LogLevel.Trace,$"-- Plugin {plugin} Config Loaded --");   
             }
             var commands = CreateCommands(pluginAssembly).ToList();
 
             var tasks = new List<Task>();
-            _logger.LogInformation($"-- Total Commands: {commands.Count} --");
+            if (commands.Count > 1)
+            {
+                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
+            }
             foreach (var command in commands)
             {
                 tasks.Add(command.Dispose());
-                _logger.LogInformation($"-- Disposing of command {command.Name} --");
+                await _logger( LogLevel.Trace,$"-- Disposing of command {command.Name} --");
             }
 
             try
@@ -256,7 +261,7 @@ public class PluginService : IPluginService
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                await _logger(LogLevel.Error, e.Message, e);
                 throw;
             }
         }
@@ -265,7 +270,7 @@ public class PluginService : IPluginService
     private static Assembly LoadPlugin(string relativePath)
     {
         var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-        Console.WriteLine($"Loading commands from: {pluginLocation}");
+        _logger( LogLevel.Trace,$"Loading commands from: {pluginLocation}").ConfigureAwait(false);
         var loadContext = new PluginLoadContext(pluginLocation);
         return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
     }
@@ -273,7 +278,7 @@ public class PluginService : IPluginService
     private static string LoadConfig(string relativePath)
     {
         var configLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-        Console.WriteLine($"Loading config from: {configLocation}");
+        _logger( LogLevel.Trace,$"Loading config from: {configLocation}").ConfigureAwait(false);
         if (File.Exists(configLocation))
         {
             return File.ReadAllText(configLocation);

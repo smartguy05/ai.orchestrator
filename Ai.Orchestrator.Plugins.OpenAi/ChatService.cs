@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
+using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
 using Ai.Orchestrator.Services;
 
@@ -16,14 +18,15 @@ public class ChatService
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+    private ScheduledTask _pendingScheduledTask;
+    private readonly LogDelegate _logger;
     
-    public ChatService()
+    public ChatService(LogDelegate logger)
     {
+        _logger = logger;
         MessageCache.Init();
     }
-    
-    private ScheduledTask _pendingScheduledTask;
-    
+
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
         Dictionary<string, IEnumerable<string>> serviceFunctions, int attempt)
     {
@@ -90,11 +93,11 @@ public class ChatService
                 {
                     attempt++;
                     request.Messages = null;
-                    Console.WriteLine($"Retrying {attempt} of {maxAttempts} attempts");
+                    await _logger(LogLevel.Warning, $"Retrying {attempt} of {maxAttempts} attempts");
                     return await CompleteChat(request, config, serviceFunctions, attempt);
                 }
                 
-                Console.WriteLine("Retry failed.");
+                await _logger(LogLevel.Warning, "Retry failed.");
             }
 
             if (errorContent == "Last user message must contain a text type")
@@ -234,7 +237,7 @@ public class ChatService
 
                         if (_pendingScheduledTask is not null)
                         {
-                            Console.WriteLine("Scheduling task");
+                            await _logger(LogLevel.Debug, "Scheduling task");
                             _pendingScheduledTask.OrchestratorRequest = new OrchestratorRequest
                             {
                                 Service = serviceFunction.Key,
@@ -251,7 +254,7 @@ public class ChatService
                                 ]
                             };
                             
-                            Console.WriteLine(JsonSerializer.Serialize(_pendingScheduledTask, _serializerOptions));
+                            await _logger(LogLevel.Trace, JsonSerializer.Serialize(_pendingScheduledTask, _serializerOptions));
                             
                             var taskScheduler = ServiceResolver.GetTaskScheduler();
                             await taskScheduler.AddScheduledTask(_pendingScheduledTask);
@@ -268,8 +271,8 @@ public class ChatService
                         }
                         else
                         {
-                            Console.WriteLine("Tool call required");
-                            Console.WriteLine(JsonSerializer.Serialize(messages, _serializerOptions));
+                            await _logger(LogLevel.Info, "Tool call required");
+                            await _logger(LogLevel.Trace, JsonSerializer.Serialize(messages, _serializerOptions));
                             serviceRequest.Add("conversationId", request.ConversationId);
                             requests.Add(new OrchestratorRequest
                             {
@@ -391,7 +394,7 @@ public class ChatService
             {
                 var responseString = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<FileResponse>(responseString);
-                Console.WriteLine($"File uploaded successfully. File ID: {result.Id}");
+                await _logger(LogLevel.Info, $"File uploaded successfully. File ID: {result.Id}");
 
                 var lastMessage = messages.Last();
                 if (lastMessage.Role.ToLower() == "user")
@@ -444,11 +447,11 @@ public class ChatService
             }
             
             var errorResponse = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"Upload failed: {errorResponse}");
+            await _logger(LogLevel.Warning, $"Upload failed: {errorResponse}");
         }
         catch (HttpRequestException e)
         {
-            Console.WriteLine($"Error uploading image: {e.Message}");
+            await _logger(LogLevel.Warning, $"Error uploading image: {e.Message}");
             throw;
         }
 

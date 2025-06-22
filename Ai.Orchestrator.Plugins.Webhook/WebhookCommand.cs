@@ -11,7 +11,7 @@ public class WebhookCommand: CommandBase<ServiceRequest,ServiceConfig>
     public override string Name => "Webhook";
     public override string Description  => "Send a Webhook request";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
         var webhook = config.Webhooks.FirstOrDefault(f =>
             string.Equals(f.Name, serviceRequest.WebhookName, StringComparison.InvariantCultureIgnoreCase));

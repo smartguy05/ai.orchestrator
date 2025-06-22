@@ -1,8 +1,7 @@
 using Ai.Orchestrator.Middleware;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Services;
-// todo: uncomment with task scheduler work
-// using TaskScheduler = Ai.Orchestrator.Services.TaskScheduler;
+using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator;
 
@@ -16,6 +15,7 @@ class Program
         builder.Services
             .AddEndpointsApiExplorer()
             .AddSwaggerGen()
+            #if DEBUG
             .AddHttpLogging(options =>
             {
                 // Configure HTTP logging options
@@ -23,19 +23,29 @@ class Program
                 options.RequestBodyLogLimit = 4096;
                 options.ResponseBodyLogLimit = 4096;
             })
+            #endif
             .RegisterOrchestratorMiddleware();
 
         var app = builder.Build();
 
+        var loggingService = app.Services.GetRequiredService<ILoggingService>();
+        await loggingService.Log(LogLevel.Info, "Loading application");
+        await loggingService.Log(LogLevel.Trace, "Logging Service Started");
         var pluginService = app.Services.GetRequiredService<IPluginService>();
+        await loggingService.Log(LogLevel.Trace, "Plugin Service Started");
         var taskScheduler = app.Services.GetRequiredService<ITaskScheduler>();
+        await loggingService.Log(LogLevel.Trace, "Task Scheduler Started");
+        
         ServiceResolver.Initialize(app.Services);
         
-        await pluginService.InitializePlugins();
+        await loggingService.Log(LogLevel.Info, "Initializing Plugins");
+        await pluginService.InitializePlugins(loggingService.Log);
         
+        #if DEBUG
         app.UseSwagger()
             .UseSwaggerUI();
-
+        #endif
+        
         app.UseHttpLogging()
             .UseHttpsRedirection()
             .UseAuthorization();
@@ -44,15 +54,17 @@ class Program
 
         try
         {
+            await loggingService.Log(LogLevel.Info, "Starting application");
             await app.RunAsync();
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            await loggingService.LogError(e.Message, e);
         }
         finally
         {
-            await pluginService?.DisposePlugins();    
+            await loggingService.Log(LogLevel.Info, "Disposing plugins");
+            await pluginService.DisposePlugins();
         }
     }   
 }

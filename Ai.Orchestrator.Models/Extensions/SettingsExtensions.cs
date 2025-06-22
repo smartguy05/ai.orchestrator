@@ -5,7 +5,17 @@ namespace Ai.Orchestrator.Models.Extensions;
 
 public static class SettingsExtensions
 {
-    public static T ReadConfig<T>(this string config) where T: IPluginConfig
+    public static T ReadPluginConfig<T>(this string config) where T: IPluginConfig
+    {
+        return ReadConfig<T>(config);
+    }
+    
+    public static T ReadLoggingConfig<T>(this string config) where T: ILoggingConfig
+    {
+        return ReadConfig<T>(config);
+    }
+
+    private static T ReadConfig<T>(this string config)
     {
         if (!string.IsNullOrWhiteSpace(config))
         {

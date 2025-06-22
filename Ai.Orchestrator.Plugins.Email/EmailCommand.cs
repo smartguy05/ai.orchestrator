@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using System.Web;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Email.Models;
@@ -16,7 +17,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
     public override string Name => "Email";
     public override string Description => "Send/Read email";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
         switch (serviceRequest.Method.ToLower())
         {
@@ -100,20 +101,20 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             await client.ConnectAsync(mailAccount.Smtp, mailAccount.SmtpPort);
             await client.AuthenticateAsync(mailAccount.Username, mailAccount.Password);
 
-            Console.WriteLine($"Mail account {mailAccount.Username} authenticated");
+            await Log(LogLevel.Info, $"Mail account {mailAccount.Username} authenticated");
 
             await client.SendAsync(message);
 
-            Console.WriteLine("Email successfully sent");
+            await Log(LogLevel.Info, "Email successfully sent");
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Error sending email: {e.Message}");
+            await Log(LogLevel.Error, $"Error sending email: {e.Message}");
             throw;
         }
         finally
         {
-            client.Disconnect(true);
+            await client.DisconnectAsync(true);
         }
 
         return true;
@@ -130,7 +131,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             await client.ConnectAsync(mailAccount.Imap, mailAccount.ImapPort, mailAccount.UseSsl);
             await client.AuthenticateAsync(mailAccount.Username, mailAccount.Password);
             
-            Console.WriteLine($"Mail account {mailAccount.Username} authenticated");
+            await Log(LogLevel.Info, $"Mail account {mailAccount.Username} authenticated");
             
             await client.Inbox.OpenAsync(FolderAccess.ReadWrite);
             
@@ -149,11 +150,11 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
 
             await client.Inbox.ExpungeAsync();
             
-            Console.WriteLine($"{deletedCount} email(s) deleted");
+            await Log(LogLevel.Info,$"{deletedCount} email(s) deleted");
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Error deleting email: {e.Message}");
+            await Log(LogLevel.Error,$"Error deleting email: {e.Message}");
             throw;
         }
         finally
@@ -174,10 +175,10 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             await client.ConnectAsync(mailAccount.Imap, mailAccount.ImapPort, mailAccount.UseSsl);
             await client.AuthenticateAsync(mailAccount.Username, mailAccount.Password);
             
-            Console.WriteLine($"Mail account {mailAccount.Username} authenticated");
+            await Log(LogLevel.Info, $"Mail account {mailAccount.Username} authenticated");
             
             await client.Inbox.OpenAsync(FolderAccess.ReadOnly);
-            Console.WriteLine($"Total messages in INBOX: {client.Inbox.Count}");
+            await Log(LogLevel.Debug, $"Total messages in INBOX: {client.Inbox.Count}");
             
             var emailIds = new List<UniqueId>();
             if (!string.IsNullOrWhiteSpace(request.MessageId))
@@ -208,7 +209,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             
             var messageCount = client.Inbox.Count;
             messageCount = Math.Min(distinctEmailIds.Any() ? distinctEmailIds.Count : messageCount, request.MaxReturnedEmails);
-            Console.WriteLine($"Total messages processing: {messageCount}");
+            await Log(LogLevel.Debug, $"Total messages processing: {messageCount}");
 
             List<MailMessage> messages = new();
             if (distinctEmailIds.Any())
@@ -250,7 +251,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Error getting email: {e.Message}");
+            await Log(LogLevel.Error, $"Error getting email: {e.Message}");
             throw;
         }
         finally
