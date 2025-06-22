@@ -11,6 +11,7 @@ public class ServiceRequest: IPluginServiceRequest
     public string SystemPrompt { get; set; }
     public string UserPrompt { get; set; }
     public string Model { get; set; }
+    public string Agent { get; set; }
     public IEnumerable<ChatMessageHistory> Messages { get; set; }
     public double Temperature { get; set; } = 0.7;
     public string ConversationId { get; set; }

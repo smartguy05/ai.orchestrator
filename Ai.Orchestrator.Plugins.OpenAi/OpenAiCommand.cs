@@ -18,29 +18,56 @@ public class OpenAiCommand : ICommand
         Logger = logFunction;
         var serviceRequest = request.ServiceRequest?.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadPluginConfig<ServiceConfig>();
-        config.Tools = availableToolCalls;
+        availableToolCalls = availableToolCalls.ToList();
         
-        if (serviceRequest is null && (request.Messages is null || !request.Messages.Any()))
+        if (serviceRequest is null)
         {
             throw new Exception("Unable to read openai service request");
         }
-
-        if (serviceRequest is not null)
+        
+        var apiConfig = config.GetApiConfig(serviceRequest.Agent);
+        if (apiConfig is null)
         {
-            serviceRequest.SystemPrompt ??= config.DefaultSystemPrompt;
-            serviceRequest.Model ??= config.Model;
+            throw new Exception("Unable to read openai api config");
         }
+        
+        serviceRequest.SystemPrompt ??= apiConfig.DefaultSystemPrompt;
+        serviceRequest.Model ??= apiConfig.Model;
 
         var service = new ChatService(Log);
-        if (request.Messages is not null && request.Messages.Any())
+        if (request.Messages is not null && request.Messages.Count > 0)
         {
-            if (serviceRequest is null)
-            {
-                serviceRequest = new ServiceRequest();
-            }
             serviceRequest.Messages = request.Messages;
         }
-        return await service.CompleteChat(serviceRequest, config, request.ServiceFunctions, 1);
+
+        try
+        {
+            switch (serviceRequest.Method?.ToLower())
+            {
+                case "get_list_of_available_agents":
+                    var agents =  config.Agents.Select(s => new
+                    {
+                        s.Name,
+                        s.Description
+                    });
+                    return new
+                    {
+                        Success = true,
+                        Agents = agents
+                    };
+                default:
+                    return await service.CompleteChat(serviceRequest, apiConfig, availableToolCalls, request.ServiceFunctions, 1);
+            }
+        }
+        catch (Exception e)
+        {
+            await Log(LogLevel.Error, e.Message, e);
+            return new
+            {
+                Success = false,
+                e.Message
+            };
+        }
     }
     
     public Task Log(LogLevel logLevel, string message, Exception exception = null)

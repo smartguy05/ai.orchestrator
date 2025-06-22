@@ -7,4 +7,5 @@ public class TextRequest
     public string SystemPrompt { get; set; } = $"You are a helpful assistant. Please answer questions the best of your ability. If you do not know the answer and are not able to get the answer using a tool, say so, do not make things up. The current local datetime is {DateTime.Now}.";
     public string ConversationId { get; set; } = Guid.NewGuid().ToString();
     public dynamic Attachment { get; set; }
+    public string Agent { get; set; }
 }

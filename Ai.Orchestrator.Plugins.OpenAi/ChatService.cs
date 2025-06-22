@@ -6,6 +6,7 @@ using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
+using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
 using Ai.Orchestrator.Services;
 
@@ -26,14 +27,19 @@ public class ChatService
         _logger = logger;
         MessageCache.Init();
     }
-
-    public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
+    
+    public async Task<object> CompleteChat(ServiceRequest request, OpenAiApi config, IEnumerable<ToolCall> toolCalls,
         Dictionary<string, IEnumerable<string>> serviceFunctions, int attempt)
     {
         const int maxAttempts = 3;
         request.ConversationId ??= Guid.NewGuid().ToString();
-        
-        var tools = config.Tools.Select(s => new ToolOption("function", s.Function)).ToList();
+        toolCalls = toolCalls.ToList();
+        List<ToolOption> tools = new();
+            
+        if (config.ToolsEnabled)
+        {
+            tools = toolCalls.Select(s => new ToolOption("function", s.Function)).ToList();   
+        }
         var messages = await GetMessages(request);
 
         if (request.Photo is not null && request.Photo.Any())
@@ -94,7 +100,7 @@ public class ChatService
                     attempt++;
                     request.Messages = null;
                     await _logger(LogLevel.Warning, $"Retrying {attempt} of {maxAttempts} attempts");
-                    return await CompleteChat(request, config, serviceFunctions, attempt);
+                    return await CompleteChat(request, config, toolCalls, serviceFunctions, attempt);
                 }
                 
                 await _logger(LogLevel.Warning, "Retry failed.");
@@ -118,8 +124,8 @@ public class ChatService
 
         return await ProcessResponse(choice, request, messages, serviceFunctions, config);
     }
-    
-    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions, ServiceConfig config)
+
+    private async Task<object> ProcessResponse(Choice choice, ServiceRequest request, List<ChatMessageHistory> messages, Dictionary<string, IEnumerable<string>> serviceFunctions, OpenAiApi config)
     {
         switch (choice.FinishReason)
         {
@@ -336,7 +342,7 @@ public class ChatService
         }
     }
     
-    private async Task<HttpResponseMessage> SendRequest(ServiceConfig config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
+    private async Task<HttpResponseMessage> SendRequest(OpenAiApi config, ServiceRequest request, List<ChatMessageHistory> messages, List<ToolOption> tools)
     {
         var validRoles = new List<string>
         {
@@ -354,7 +360,7 @@ public class ChatService
         
         using var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromSeconds(300); // Set timeout to 300 seconds (5 minutes)
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
+        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.Key);
         
         var oAiRequest = new ApiRequest
         {
@@ -365,10 +371,10 @@ public class ChatService
         var body = JsonSerializer.Serialize(oAiRequest, _serializerOptions);
         var content = new StringContent(body, Encoding.UTF8, "application/json");
 
-        return await httpClient.PostAsync($"{config.OpenAiUrl}/chat/completions", content);
+        return await httpClient.PostAsync($"{config.Url}/chat/completions", content);
     }
     
-    private async Task<List<ChatMessageHistory>> UploadImageAsync(ServiceConfig config, string photo, List<ChatMessageHistory> messages, string conversationId)
+    private async Task<List<ChatMessageHistory>> UploadImageAsync(OpenAiApi config, string photo, List<ChatMessageHistory> messages, string conversationId)
     {
         using var content = new MultipartFormDataContent();
         
@@ -383,10 +389,10 @@ public class ChatService
         {
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(300); // Set timeout to 300 seconds (5 minutes)
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.Key);
             
             var response = await httpClient.PostAsync(
-                $"{config.OpenAiUrl}/files", 
+                $"{config.Url}/files", 
                 content
             );
 
@@ -540,13 +546,13 @@ public class ChatService
     /// Retrieves all files and deletes those that have expired
     /// </summary>
     /// <returns>A summary of deletion operations</returns>
-    private async Task<FileCleanupResult> CleanupExpiredFilesAsync(ServiceConfig config)
+    private async Task<FileCleanupResult> CleanupExpiredFilesAsync(OpenAiApi config)
     {
         var result = new FileCleanupResult();
 
         try 
         {
-            var files = await ListFilesAsync(config.OpenAiUrl);
+            var files = await ListFilesAsync(config.Url);
             
             var now = DateTimeOffset.UtcNow;
 
@@ -560,7 +566,7 @@ public class ChatService
             // Delete each expired file
             foreach (var file in expiredFiles)
             {
-                if (await DeleteFileAsync(file.Id, config.OpenAiUrl))
+                if (await DeleteFileAsync(file.Id, config.Url))
                 {
                     result.SuccessfullyDeletedFiles.Add(file);
                 }
@@ -608,7 +614,6 @@ public class ChatService
         var response = await httpClient.DeleteAsync($"{apiUrl}/files/{fileId}");
         return response.IsSuccessStatusCode;
     }
-
     
     private string AddContext(string systemPrompt, string conversationId)
     {

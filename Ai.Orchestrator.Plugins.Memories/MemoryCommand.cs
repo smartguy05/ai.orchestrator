@@ -43,7 +43,7 @@ public class MemoryCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override async Task<object> Initialize(string configString, LogDelegate logFunction)
     {
         var config = configString.ReadPluginConfig<ServiceConfig>();
-        _chromaService ??= new ChromaService(config, Log);
+        _chromaService ??= new ChromaService(config, logFunction);
         var collection = await _chromaService.GetOrCreateCollectionClientAsync(config.DefaultCollectionName);
 
         if (collection is not null)
