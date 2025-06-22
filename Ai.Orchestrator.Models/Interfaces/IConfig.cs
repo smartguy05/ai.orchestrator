@@ -7,4 +7,6 @@ public interface IConfig
     public string PluginDirectory { get; set; }
     public string ConfigDirectory { get; set; }
     public string ActivePlugins { get; set; }
+    public string LoggingPluginsString { get; set; }
+    public IEnumerable<string> LoggingPlugins { get; }
 }

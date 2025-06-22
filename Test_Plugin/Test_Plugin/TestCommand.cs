@@ -1,5 +1,6 @@
 ﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Extensions;
 using Ai.Orchestrator.Models.Tools;
 
@@ -9,6 +10,7 @@ public class TestCommand : ICommand
 {
     public string Name => "TEST";
     public string Description  => "Displays hello message.";
+    public LogDelegate Logger { get; set; }
 
     // Example service request of string array
     // public async Task<object> Execute(object request, string config)
@@ -36,11 +38,13 @@ public class TestCommand : ICommand
     //     return Task.FromResult(Task.FromResult((object)0));
     // }
     
-    public Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+    public Task<object> Execute(OrchestratorRequest request, string configString, 
+        IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction)
     {
+        Logger = logFunction;
         var args = request.ServiceRequest as TestClass;
         // var args = request.GetServiceRequest<TestClass>();
-        var config = configString.ReadConfig<TestConfig>();
+        var config = configString.ReadPluginConfig<TestConfig>();
 
         Console.WriteLine("TEST SUCCESSFUL!!!");
         if (args is not null)
@@ -58,6 +62,16 @@ public class TestCommand : ICommand
         Console.WriteLine($"TestName2: {config.TestName2}");
 
         return Task.FromResult((object)0);
+    }
+    
+    public virtual async Task Log(LogLevel logLevel, string message, Exception exception = null)
+    {
+        await Logger(logLevel, message, exception);
+    }
+    
+    public Task<object> Initialize(string config, LogDelegate logFunction)
+    {
+        return Task.FromResult<object>(null);
     }
 }
 

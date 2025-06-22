@@ -1,17 +1,22 @@
 ﻿using Ai.Orchestrator.Models.Extensions;
 using Ai.Orchestrator.Models.Tools;
+using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator.Models.Interfaces;
 
+public delegate Task LogDelegate(LogLevel level, string message, Exception exception = null);
+
 public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServiceRequest where TU : IPluginConfig
 {
+    public LogDelegate Logger { get; set; }
     public abstract string Name { get; }
     public abstract string Description { get; }
-    
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction)
     {
+        Logger = logFunction;
         var serviceRequest = request.ServiceRequest.GetServiceRequest<T>();
-        var config = configString.ReadConfig<TU>();
+        var config = configString.ReadPluginConfig<TU>();
         
         var result = await DoWork(serviceRequest, config, availableToolCalls);
         
@@ -23,10 +28,16 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
         return result;
     }
 
-    public abstract Task<object> DoWork(T serviceRequest, TU config, IEnumerable<ToolCall> availableToolCalls);
+    protected abstract Task<object> DoWork(T serviceRequest, TU config, IEnumerable<ToolCall> availableToolCalls);
 
-    public virtual Task<object> Initialize(string config)
+    public Task Log(LogLevel logLevel, string message, Exception exception = null)
+    { 
+        return Logger(logLevel, message, exception);
+    }
+    
+    public virtual Task<object> Initialize(string config, LogDelegate logFunction)
     {
+        Logger = logFunction;
         return Task.FromResult<object>(null);
     }
 }

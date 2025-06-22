@@ -13,7 +13,8 @@
         "ConfigDirectory": "Configs",
         "ActivePlugins": "Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.OpenAi,Ai.Orchestrator.Plugins.WebSearch,Ai.Orchestrator.Plugins.PythonRunner,Ai.Orchestrator.Plugins.HomeAssistantAssist,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.Memories,Ai.Orchestrator.Plugins.Telegram",
         "RedisConnectionString": "localhost:6379",
-        "RedisConversationSubject": "openai.plugin"
+        "RedisConversationSubject": "openai.plugin",
+        "LoggingPluginsString": "Ai.Orchestrator.Logging.FileLogger"
       }
     },
     "https": {

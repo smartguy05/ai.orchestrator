@@ -1,6 +1,8 @@
 using ChromaDB.Client;
 using Ai.Orchestrator.Plugins.Memories.Models;
 using System.ClientModel;
+using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Interfaces;
 using ChromaDB.Client.Models;
 using OpenAI;
 
@@ -18,14 +20,16 @@ namespace Ai.Orchestrator.Plugins.Memories
         private readonly string _defaultCollectionName;
         private readonly OpenAIClient _openAiClient;
         private readonly string _embeddingModel;
+        private readonly LogDelegate _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ChromaService"/> class.
         /// </summary>
         /// <param name="config">The service configuration containing ChromaDB and OpenAI settings.</param>
         /// <param name="httpClientInstance">Optional HttpClient instance. If null, a new one will be created.</param>
-        public ChromaService(ServiceConfig config, HttpClient httpClientInstance = null)
+        public ChromaService(ServiceConfig config, LogDelegate logger, HttpClient httpClientInstance = null)
         {
+            _logger = logger;
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
             if (string.IsNullOrWhiteSpace(config.ChromaUrl))
@@ -58,16 +62,16 @@ namespace Ai.Orchestrator.Plugins.Memories
         {
             try
             {
-                Console.WriteLine($"Testing connection to ChromaDB at: {_chromaConfigOptions.Uri}");
+                await _logger(LogLevel.Info, $"Testing connection to ChromaDB at: {_chromaConfigOptions.Uri}");
                 var heartbeat = await _chromaClient.Heartbeat();
-                Console.WriteLine($"Heartbeat response: {heartbeat.NanosecondHeartbeat}");
+                await _logger(LogLevel.Info, $"Heartbeat response: {heartbeat.NanosecondHeartbeat}");
                 // Heartbeat returns a long, typically a timestamp. Success is indicated by no exception.
                 return heartbeat.NanosecondHeartbeat > 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Connection test failed: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                await _logger(LogLevel.Error,$"Connection test failed: {ex.Message}");
+                await _logger(LogLevel.Error,$"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }
@@ -182,13 +186,13 @@ namespace Ai.Orchestrator.Plugins.Memories
                     documents: [text]
                 );
                 
-                Console.WriteLine($"Successfully added memory with ID: {memoryId}");
+                await _logger(LogLevel.Info, $"Successfully added memory with ID: {memoryId}");
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error adding memory: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                await _logger(LogLevel.Error, $"Error adding memory: {ex.Message}");
+                await _logger(LogLevel.Error, $"Stack trace: {ex.StackTrace}");
                 return false;
             }
         }
@@ -330,7 +334,7 @@ namespace Ai.Orchestrator.Plugins.Memories
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error editing memory: {ex.Message}");
+                await _logger(LogLevel.Error, $"Error editing memory: {ex.Message}");
                 return false;
             }
         }
@@ -349,20 +353,20 @@ namespace Ai.Orchestrator.Plugins.Memories
                 
                 // Sanitize collection name - ChromaDB has naming restrictions
                 name = SanitizeCollectionName(name);
-                Console.WriteLine($"Working with collection: {name}");
-                Console.WriteLine($"ChromaDB URL: {_chromaConfigOptions.Uri}");
+                await _logger(LogLevel.Debug,$"Working with collection: {name}");
+                await _logger(LogLevel.Trace,$"ChromaDB URL: {_chromaConfigOptions.Uri}");
                 
                 // First try to get the collection
                 ChromaCollection collection = null;
                 try
                 {
-                    Console.WriteLine($"Attempting to get existing collection: {name}");
+                    await _logger(LogLevel.Debug,$"Attempting to get existing collection: {name}");
                     collection = await _chromaClient.GetCollection(name);
-                    Console.WriteLine($"Found existing collection: {name}");
+                    await _logger(LogLevel.Debug,$"Found existing collection: {name}");
                 }
                 catch (Exception getEx)
                 {
-                    Console.WriteLine($"Collection not found, will create: {getEx.Message}");
+                    await _logger(LogLevel.Info,$"Collection not found, will create: {getEx.Message}");
                     // Collection doesn't exist, we'll create it
                 }
                 
@@ -371,28 +375,28 @@ namespace Ai.Orchestrator.Plugins.Memories
                 {
                     try
                     {
-                        Console.WriteLine($"Creating new collection: {name}");
+                        await _logger(LogLevel.Info,$"Creating new collection: {name}");
                         collection = await _chromaClient.CreateCollection(
                             name: name,
                             metadata: new Dictionary<string, object> 
                             { 
                                 ["description"] = $"Memory collection created at {DateTime.UtcNow:O}" 
                             });
-                        Console.WriteLine($"Successfully created collection: {name}");
+                        await _logger(LogLevel.Info,$"Successfully created collection: {name}");
                     }
                     catch (Exception createEx)
                     {
-                        Console.WriteLine($"Error creating collection via CreateCollection: {createEx.Message}");
+                        await _logger(LogLevel.Error,$"Error creating collection via CreateCollection: {createEx.Message}");
                         
                         // As a fallback, try GetOrCreateCollection
-                        Console.WriteLine("Attempting GetOrCreateCollection as fallback...");
+                        await _logger(LogLevel.Error,"Attempting GetOrCreateCollection as fallback...");
                         try
                         {
                             collection = await _chromaClient.GetOrCreateCollection(name, new Dictionary<string, object>());
                         }
                         catch (Exception fallbackEx)
                         {
-                            Console.WriteLine($"GetOrCreateCollection also failed: {fallbackEx.Message}");
+                            await _logger(LogLevel.Error,$"GetOrCreateCollection also failed: {fallbackEx.Message}");
                             throw;
                         }
                     }
@@ -405,14 +409,14 @@ namespace Ai.Orchestrator.Plugins.Memories
 
                 _dbCollectionId ??= collection.Id;
                 
-                Console.WriteLine($"Successfully obtained collection: {name} with ID: {_dbCollectionId}");
+                await _logger(LogLevel.Debug,$"Successfully obtained collection: {name} with ID: {_dbCollectionId}");
 
                 return new ChromaCollectionClient(collection, _chromaConfigOptions, _httpClient);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetOrCreateCollectionClientAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                await _logger(LogLevel.Error,$"Error in GetOrCreateCollectionClientAsync: {ex.Message}");
+                await _logger(LogLevel.Error,$"Stack trace: {ex.StackTrace}");
                 
                 // Add more specific error information
                 if (ex.Message.Contains("MethodNotAllowed") || ex.Message.Contains("405"))
