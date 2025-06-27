@@ -14,14 +14,12 @@ public class LoggingService : ILoggingService
 
     public LoggingService()
     {
-        if (_config.LoggingPlugins == null || _config.LogToConsole)
+        if (_config.LoggingPlugins.Count == 0 || _config.LogToConsole)
         {
             _useConsole = true;
         }
-        else
-        {
-            GetPlugins();   
-        }
+        
+        GetPlugins();
     }
 
     public Task LogInformation(string message)
@@ -81,7 +79,7 @@ public class LoggingService : ILoggingService
 
     private void GetPlugins()
     {
-        if (_plugins.Count > 0 || _useConsole)
+        if (_plugins.Count > 0)
         {
             return;
         }
@@ -126,11 +124,10 @@ public class LoggingService : ILoggingService
     
     private string LoadConfig(string configPath)
     {
-        var configLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, configPath.Replace('\\', Path.DirectorySeparatorChar)));
-        Log( LogLevel.Info,$"Loading config from: {configLocation}").ConfigureAwait(false);
-        if (File.Exists(configLocation))
+        Log( LogLevel.Info,$"Loading config from: {configPath}").ConfigureAwait(false);
+        if (File.Exists(configPath))
         {
-            return File.ReadAllText(configLocation);
+            return File.ReadAllText(configPath);
         }
 
         return null;
