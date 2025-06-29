@@ -13,6 +13,10 @@ public class PluginService : IPluginService
 {
     private readonly Config _config = new();
     private static LogDelegate _logger;
+    private static IConfirmationService _confirmationService;
+    private static readonly Dictionary<string, Assembly> _assemblyCache = new (StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, PluginLoadContext> _contextCache = new (StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, List<object>> _pluginInstanceCache = new(StringComparer.OrdinalIgnoreCase);
 
     public List<ToolCall> GetTools()
     {
@@ -147,46 +151,25 @@ public class PluginService : IPluginService
             string.Equals(f, request.Service, StringComparison.InvariantCultureIgnoreCase));
         if (plugin != null)
         {
-            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            await _logger(LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
-            
-            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-            if (!string.IsNullOrWhiteSpace(config))
+            var command = GetPlugin<ICommand>(plugin);
+            if (command != null)
             {
-                await _logger(LogLevel.Trace, $"-- Plugin {plugin} Config Loaded --");
+                var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
+                return await command.Execute(request, config, GetTools(), _logger, _confirmationService);
             }
-            var commands = CreateCommands(pluginAssembly).ToList();
-
-            var tasks = new List<Task<object>>();
-            if (commands.Count > 1)
-            {
-                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
-            }
-            foreach (var command in commands)
-            {
-                tasks.Add(command?.Execute(request, config, GetTools(), _logger));
-                await _logger(LogLevel.Trace, $"-- Command {command.Name} Started --");
-            }
-            var results = (await Task.WhenAll(tasks)).ToList();
-
-            if (results.Any() && results.Count == 1)
-            {
-                return results.First();
-            }
-
-            return results;
         }
         await _logger(LogLevel.Warning, $"No plugin found with the name {request.Service}");
         throw new Exception("Invalid plugin specified!");
     }
     
-    public async Task InitializePlugins(LogDelegate logger)
+    public async Task InitializePlugins(LogDelegate logger, IConfirmationService confirmationService)
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
         {
             throw new Exception("Unable to find specified plugin");
         }
+        _confirmationService = confirmationService;
         _logger = logger;
 
         foreach (var plugin in plugins)
@@ -199,17 +182,22 @@ public class PluginService : IPluginService
             {
                 await logger(LogLevel.Trace, $"-- Plugin {plugin} Config Loaded --");
             }
-            var commands = CreateCommands(pluginAssembly).ToList();
+            var instances = CreatePluginInstances(pluginAssembly).ToList();
+
+            if (!_pluginInstanceCache.ContainsKey(plugin))
+            {
+                _pluginInstanceCache.Add(plugin, instances);
+            }
 
             var tasks = new List<Task<object>>();
-            if (commands.Count > 1)
+            foreach (var instance in instances)
             {
-                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
-            }
-            foreach (var command in commands)
-            {
-                tasks.Add(command?.Initialize(config, logger));
-                await logger(LogLevel.Trace, $"-- Command {command.Name} Initialized --");
+                // 3. Only call Initialize if the instance is an ICommand.
+                if (instance is ICommand command)
+                {
+                    tasks.Add(command.Initialize(config, logger, confirmationService));
+                    await logger(LogLevel.Trace, $"-- Command {command.Name} Initialized --");
+                }
             }
 
             try
@@ -223,56 +211,66 @@ public class PluginService : IPluginService
             }
         }
     }
-
-    public async Task DisposePlugins()
+    
+    public T GetPlugin<T>(string pluginName) where T : class
     {
-        var plugins = _config.ActivePlugins.Split(",");
-        if (!plugins.Any())
+        if (_pluginInstanceCache.TryGetValue(pluginName, out var instances))
         {
-            throw new Exception("Unable to find specified plugin");
+            return instances.OfType<T>().FirstOrDefault();
         }
 
-        foreach (var plugin in plugins)
+        _logger?.Invoke(LogLevel.Error, $"Attempted to get plugin '{pluginName}' before it was initialized.", null).Wait();
+        return null;
+    }
+    
+    public Task DisposePlugins()
+    {
+        foreach (var context in _contextCache.Values)
         {
-            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            await _logger( LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
-                
-            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-            if (!string.IsNullOrWhiteSpace(config))
+            context.Unload();
+        }
+        _assemblyCache.Clear();
+        _contextCache.Clear();
+        _pluginInstanceCache.Clear();
+        return Task.CompletedTask;
+    }
+    
+    private static IEnumerable<object> CreatePluginInstances(Assembly assembly)
+    {
+        var instances = new List<object>();
+        foreach (var type in assembly.GetExportedTypes())
+        {
+            // This condition finds any concrete class that implements a known plugin interface.
+            // You can add more interfaces here like || typeof(ILoggingPlugin).IsAssignableFrom(type)
+            if (type.IsClass && !type.IsAbstract && (typeof(ICommand).IsAssignableFrom(type) || typeof(IConfirmationPlugin).IsAssignableFrom(type)))
             {
-                await _logger( LogLevel.Trace,$"-- Plugin {plugin} Config Loaded --");   
-            }
-            var commands = CreateCommands(pluginAssembly).ToList();
-
-            var tasks = new List<Task>();
-            if (commands.Count > 1)
-            {
-                await _logger(LogLevel.Trace, $"-- Total Commands: {commands.Count} --");   
-            }
-            foreach (var command in commands)
-            {
-                tasks.Add(command.Dispose());
-                await _logger( LogLevel.Trace,$"-- Disposing of command {command.Name} --");
-            }
-
-            try
-            {
-                await Task.WhenAll(tasks);
-            }
-            catch (Exception e)
-            {
-                await _logger(LogLevel.Error, e.Message, e);
-                throw;
+                // Ensure we only create one instance of a class, even if it implements multiple interfaces.
+                if (!instances.Any(i => i.GetType() == type))
+                {
+                    instances.Add(Activator.CreateInstance(type));
+                }
             }
         }
+        return instances;
     }
     
     private static Assembly LoadPlugin(string relativePath)
     {
-        var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
+        var pluginName = Path.GetFileNameWithoutExtension(relativePath);
+        if (_assemblyCache.TryGetValue(pluginName, out var cachedAssembly))
+        {
+            return cachedAssembly;
+        }
+        
+        var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath));
         _logger( LogLevel.Trace,$"Loading commands from: {pluginLocation}").ConfigureAwait(false);
         var loadContext = new PluginLoadContext(pluginLocation);
-        return loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
+        var assembly = loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
+        
+        _contextCache[pluginName] = loadContext;
+        _assemblyCache[pluginName] = assembly;
+
+        return assembly;
     }
     
     private static string LoadConfig(string relativePath)

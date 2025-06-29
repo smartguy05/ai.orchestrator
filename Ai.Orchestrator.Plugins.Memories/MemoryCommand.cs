@@ -10,6 +10,7 @@ public class MemoryCommand: CommandBase<ServiceRequest, ServiceConfig>
 {
     public override string Name => "Memories";
     public override string Description => "A plugin to save memories for Agent use";
+    protected override IConfirmationService ConfirmationService { get; set; }
     private static ChromaService _chromaService;
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
@@ -40,7 +41,7 @@ public class MemoryCommand: CommandBase<ServiceRequest, ServiceConfig>
         }
     }
 
-    public override async Task<object> Initialize(string configString, LogDelegate logFunction)
+    public override async Task<object> Initialize(string configString, LogDelegate logFunction, IConfirmationService confirmationService)
     {
         var config = configString.ReadPluginConfig<ServiceConfig>();
         _chromaService ??= new ChromaService(config, logFunction);

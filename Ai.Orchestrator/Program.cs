@@ -35,11 +35,13 @@ class Program
         await loggingService.Log(LogLevel.Trace, "Plugin Service Started");
         var taskScheduler = app.Services.GetRequiredService<ITaskScheduler>();
         await loggingService.Log(LogLevel.Trace, "Task Scheduler Started");
+        var confirmationService = app.Services.GetRequiredService<IConfirmationService>();
+        await loggingService.Log(LogLevel.Trace, "Confirmation Service Started");
         
         ServiceResolver.Initialize(app.Services);
         
         await loggingService.Log(LogLevel.Info, "Initializing Plugins");
-        await pluginService.InitializePlugins(loggingService.Log);
+        await pluginService.InitializePlugins(loggingService.Log, confirmationService);
         
         #if DEBUG
         app.UseSwagger()

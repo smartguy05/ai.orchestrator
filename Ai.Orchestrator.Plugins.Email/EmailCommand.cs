@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using System.Web;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
@@ -14,8 +15,9 @@ namespace Ai.Orchestrator.Plugins.Email;
 
 public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
-    public override string Name => "Email";
+    public override string Name => "Ai.Orchestrator.Plugins.Email";
     public override string Description => "Send/Read email";
+    protected override IConfirmationService ConfirmationService { get; set; }
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
@@ -47,19 +49,93 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             }
             case "send_email":
             {
-                var success = await SendEmail(serviceRequest, config);
-                return Task.FromResult((object)new
+                if (string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
                 {
-                    Success = success
-                });
+                    var confirmation = new Confirmation
+                    {
+                        ConfirmationMessage = "Are you sure you want to send this email?",
+                        Content = serviceRequest.Body,
+                        Options = new Dictionary<string, bool>
+                        {
+                            { "Yes", true },
+                            { "No", false }
+                        },
+                        Id = Guid.NewGuid()
+                    };
+                    serviceRequest.ConfirmationId = confirmation.Id.ToString();
+                    var request = new OrchestratorRequest
+                    {
+                        Service = Name,
+                        ServiceRequest = serviceRequest
+                    };
+                    var confirmationRequest = await ConfirmationService.RequestConfirmation(confirmation, request);
+                    var isSuccessful = (bool?)confirmationRequest.GetType().GetProperty("Success")?.GetValue(confirmationRequest) ?? false;
+                    if (isSuccessful)
+                    {
+                        return new
+                        {
+                            Success = true,
+                            ConfirmationId = confirmation.Id.ToString()
+                        };    
+                    }
+                    
+                    return new
+                    {
+                        Success = false
+                    };
+                }
+
+                if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
+                {
+                    var success = await SendEmail(serviceRequest, config);
+                    return new
+                    {
+                        Success = success
+                    };
+                }
+
+                return new
+                {
+                    Success = false,
+                    Error = "Unable to send email without valid confirmation"
+                };
             }
             case "delete_email":
             {
-                var success = await DeleteEmail(serviceRequest, config);
-                return Task.FromResult((object)new
+                if (string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
                 {
-                    Success = success
-                });
+                    return await ConfirmationService.RequestConfirmation(
+                        new Confirmation
+                        {
+                            ConfirmationMessage = "Are you sure you want to delete this email?",
+                            Content = serviceRequest.Body,
+                            Options = new Dictionary<string, bool>
+                            {
+                                { "Yes", true },
+                                { "No", false }
+                            }
+                        },
+                        new OrchestratorRequest
+                        {
+                            Service = Name,
+                            ServiceRequest = serviceRequest
+                        });
+                }
+
+                if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
+                {
+                    var success = await DeleteEmail(serviceRequest, config);
+                    return new
+                    {
+                        Success = success
+                    };
+                }
+
+                return new
+                {
+                    Success = false,
+                    Error = "Unable to send email without valid confirmation"
+                };
             }
             default:
             {

@@ -12,9 +12,11 @@ public class OpenAiCommand : ICommand
     public string Name => "OpenAI";
     public string Description => "OpenAI integration";
     public LogDelegate Logger { get; set; }
+    protected IConfirmationService ConfirmationService { get; set; }
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction)
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, IConfirmationService confirmationService)
     {
+        ConfirmationService ??= confirmationService;
         Logger = logFunction;
         var serviceRequest = request.ServiceRequest?.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadPluginConfig<ServiceConfig>();
@@ -40,6 +42,14 @@ public class OpenAiCommand : ICommand
             serviceRequest.Messages = request.Messages;
         }
 
+        if (!string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
+        {
+            return new
+            {
+                Success = true
+            };
+        }
+
         try
         {
             switch (serviceRequest.Method?.ToLower())
@@ -56,7 +66,23 @@ public class OpenAiCommand : ICommand
                         Agents = agents
                     };
                 default:
-                    return await service.CompleteChat(serviceRequest, apiConfig, availableToolCalls, request.ServiceFunctions, 1);
+                {
+                    var response = await service.CompleteChat(serviceRequest, apiConfig, availableToolCalls,
+                        request.ServiceFunctions, 1);
+                    var isSuccessful = (bool?)response.GetType().GetProperty("Success")?.GetValue(response) ?? false;
+                    if (isSuccessful)
+                    {
+                        var confirmationId = response.GetType().GetProperty("ConfirmationId")?.GetValue(response) as string;
+                        if (!string.IsNullOrWhiteSpace(confirmationId))
+                        {
+                            return new
+                            {
+                                Success = true
+                            };
+                        }
+                    }
+                    return response;
+                }
             }
         }
         catch (Exception e)
@@ -75,7 +101,7 @@ public class OpenAiCommand : ICommand
         return Logger(logLevel, message, exception);
     }
     
-    public Task<object> Initialize(string config, LogDelegate logFunction)
+    public Task<object> Initialize(string config, LogDelegate logFunction, IConfirmationService confirmationService)
     {
         return Task.FromResult<object>(null);
     }

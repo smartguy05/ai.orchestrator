@@ -10,4 +10,5 @@ public interface IPluginServiceRequest
     public string ToolCallId { get; set; }
     [JsonPropertyName("requestingService")]
     public string RequestingService { get; set; }
+    public string ConfirmationId { get; set; }
 }

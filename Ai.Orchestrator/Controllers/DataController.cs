@@ -45,4 +45,25 @@ public class DataController : ControllerBase
     {
         return await _orchestrator.ProcessRequestChain(requests);
     }
+
+    [HttpGet("agents")]
+    public async Task<dynamic> GetAgents()
+    {
+        var serviceRequest = new
+        {
+            Method = "get_list_of_available_agents",
+            Agent = (string)null,
+        };
+        var options = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+        var stringified = JsonSerializer.Serialize(serviceRequest, options);
+        var request = new OrchestratorRequest
+        {
+            Service = "Ai.Orchestrator.Plugins.OpenAI",
+            ServiceRequest = stringified
+        };
+        return await _orchestrator.ProcessRequest(request);
+    }
 }
