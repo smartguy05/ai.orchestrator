@@ -7,6 +7,7 @@ public interface IPluginService
     Task<object> RunPlugin(OrchestratorRequest request);
     List<ToolCall> GetTools();
     Dictionary<string, IEnumerable<string>> GetPluginContracts();
-    Task InitializePlugins(LogDelegate logger);
+    Task InitializePlugins(LogDelegate logger, IConfirmationService confirmationService);
     Task DisposePlugins();
+    T GetPlugin<T>(string pluginName) where T : class;
 }

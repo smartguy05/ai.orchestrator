@@ -13,6 +13,7 @@ public static class OrchestratorRequestExtensions
             var chatMessages = request.Messages.ToList();
             if (chatMessages.Any())
             {
+                var confirmationId = (string)data.GetType().GetProperty("ConfirmationId")?.GetValue(data);
                 var options = new JsonSerializerOptions
                 {
                     Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -30,6 +31,13 @@ public static class OrchestratorRequestExtensions
                     if (serviceRequestJson.TryGetProperty("conversationId", out var convoId))
                     {
                         conversationId = convoId.GetString();
+                    }
+                    
+                    if (!string.IsNullOrEmpty(confirmationId))
+                    {
+                        var serviceRequestObject = JsonSerializer.Deserialize<Dictionary<string, object>>(serviceRequestString);
+                        serviceRequestObject["confirmationId"] = confirmationId;
+                        request.ServiceRequest = JsonSerializer.Serialize(serviceRequestObject);
                     }
                 }
 
