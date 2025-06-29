@@ -88,10 +88,19 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                 if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
                 {
                     var success = await SendEmail(serviceRequest, config);
-                    return new
-                    {
-                        Success = success
-                    };
+                    var message = success  ? "Email Sent!": "Unable to send email!";
+                    return await ConfirmationService.RequestConfirmation(
+                        new Confirmation
+                        {
+                            ConfirmationMessage = message,
+                            Content = null,
+                            Options = new Dictionary<string, bool>()
+                        },
+                        new OrchestratorRequest
+                        {
+                            Service = Name,
+                            ServiceRequest = null
+                        });
                 }
 
                 return new
@@ -125,10 +134,19 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                 if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
                 {
                     var success = await DeleteEmail(serviceRequest, config);
-                    return new
-                    {
-                        Success = success
-                    };
+                    var message = success > 0 ? "Email(s) Deleted!": "Unable to delete email(s)!";
+                    return await ConfirmationService.RequestConfirmation(
+                        new Confirmation
+                        {
+                            ConfirmationMessage = message,
+                            Content = null,
+                            Options = new Dictionary<string, bool>()
+                        },
+                        new OrchestratorRequest
+                        {
+                            Service = Name,
+                            ServiceRequest = null
+                        });
                 }
 
                 return new

@@ -35,9 +35,9 @@ public class ConfirmationService : IConfirmationService
 
     public async Task<object> RequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
     {
-        if (confirmation == null || confirmation.Options.Count == 0)
+        if (confirmation == null)
         {
-            throw new ArgumentException("No confirmation options found");
+            throw new ArgumentException("No confirmation found");
         }
         
         confirmation.Id ??= Guid.NewGuid();
