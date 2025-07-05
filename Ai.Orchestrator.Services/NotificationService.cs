@@ -7,7 +7,7 @@ using StackExchange.Redis;
 
 namespace Ai.Orchestrator.Services;
 
-public class ConfirmationService : IConfirmationService
+public class NotificationService : INotificationService
 {
     private readonly ILoggingService _loggingService;
     private readonly IOrchestrator _orchestrator;
@@ -18,7 +18,7 @@ public class ConfirmationService : IConfirmationService
     private Dictionary<Guid, Confirmation> _confirmations = new();
     private readonly IPluginService _pluginService;
     
-    public ConfirmationService(IOrchestrator orchestrator, ILoggingService loggingService, IPluginService pluginService)
+    public NotificationService(IOrchestrator orchestrator, ILoggingService loggingService, IPluginService pluginService)
     {
         _pluginService = pluginService;
         _orchestrator = orchestrator;
@@ -33,6 +33,30 @@ public class ConfirmationService : IConfirmationService
         _plugin = pluginService.GetPlugin<IConfirmationPlugin>(_config.ConfirmationPlugin);
     }
 
+    public async Task<object> SendNotification(string message)
+    {
+        var confirmation = new Confirmation
+        {
+            Id = Guid.NewGuid(),
+            ConfirmationMessage = message
+        };
+        var result = await SendConfirmation(confirmation, null);
+        var isSuccessful = (bool?)result.GetType().GetProperty("Success")?.GetValue(result) ?? false;
+        if (isSuccessful)
+        {
+            return new
+            {
+                Success = true,
+                ConfirmationId = confirmation.Id.ToString()
+            };    
+        }
+                    
+        return new
+        {
+            Success = false
+        };
+    }
+    
     public async Task<object> RequestConfirmation(string serviceName, Confirmation confirmation, IPluginServiceRequest serviceRequest)
     {
         if (serviceRequest is null)
@@ -63,26 +87,6 @@ public class ConfirmationService : IConfirmationService
         {
             Success = false
         };
-    }
-    
-    private async Task<object> ProcessRequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
-    {
-        if (confirmation == null)
-        {
-            throw new ArgumentException("No confirmation found");
-        }
-        
-        confirmation.Id ??= Guid.NewGuid();
-        confirmation.Expiration = DateTime.Now.AddMinutes(timeoutInMinutes);
-        _confirmations.TryAdd((Guid)confirmation.Id, confirmation);
-        
-        var database = _redisConnection.GetDatabase();
-        var redisKey = $"{_redisConversationSubject}_{confirmation.Id}";
-        var requestJson = JsonSerializer.Serialize(request);
-        var expiration = TimeSpan.FromMinutes(_config.ConfirmationExpirationMinutes);
-        
-        await database.StringSetAsync(redisKey, requestJson, expiration);
-        return await SendConfirmation(confirmation, request);
     }
     
     public async Task<object> Confirm(Guid confirmationId, bool confirm)
@@ -178,6 +182,26 @@ public class ConfirmationService : IConfirmationService
         return false;
     }
     
+    private async Task<object> ProcessRequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
+    {
+        if (confirmation == null)
+        {
+            throw new ArgumentException("No confirmation found");
+        }
+        
+        confirmation.Id ??= Guid.NewGuid();
+        confirmation.Expiration = DateTime.Now.AddMinutes(timeoutInMinutes);
+        _confirmations.TryAdd((Guid)confirmation.Id, confirmation);
+        
+        var database = _redisConnection.GetDatabase();
+        var redisKey = $"{_redisConversationSubject}_{confirmation.Id}";
+        var requestJson = JsonSerializer.Serialize(request);
+        var expiration = TimeSpan.FromMinutes(_config.ConfirmationExpirationMinutes);
+        
+        await database.StringSetAsync(redisKey, requestJson, expiration);
+        return await SendConfirmation(confirmation, request);
+    }
+
     private async Task<object> SendConfirmation(Confirmation confirmation, OrchestratorRequest request)
     {
         if (_plugin is null)

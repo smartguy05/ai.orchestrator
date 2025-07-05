@@ -17,7 +17,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
     public override string Name => "Ai.Orchestrator.Plugins.Email";
     public override string Description => "Send/Read email";
-    protected override IConfirmationService ConfirmationService { get; set; }
+    protected override INotificationService NotificationService { get; set; }
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
@@ -62,23 +62,14 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                         },
                         Id = Guid.NewGuid()
                     };
-                    return await ConfirmationService.RequestConfirmation(Name, confirmation, serviceRequest);
+                    return await NotificationService.RequestConfirmation(Name, confirmation, serviceRequest);
                 }
 
-                if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
+                if (NotificationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
                 {
                     var success = await SendEmail(serviceRequest, config);
                     var message = success  ? "Email Sent!": "Unable to send email!";
-                    return await ConfirmationService.RequestConfirmation(
-                        Name,
-                        new Confirmation
-                        {
-                            ConfirmationMessage = message,
-                            Content = null,
-                            Options = new Dictionary<string, bool>()
-                        },
-                        new ServiceRequest()
-                        );
+                    return await NotificationService.SendNotification(message);
                 }
 
                 return new
@@ -91,7 +82,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
             {
                 if (string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
                 {
-                    return await ConfirmationService.RequestConfirmation(
+                    return await NotificationService.RequestConfirmation(
                         Name,
                         new Confirmation
                         {
@@ -107,11 +98,11 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                         );
                 }
 
-                if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
+                if (NotificationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
                 {
                     var success = await DeleteEmail(serviceRequest, config);
                     var message = success > 0 ? "Email(s) Deleted!": "Unable to delete email(s)!";
-                    return await ConfirmationService.RequestConfirmation(
+                    return await NotificationService.RequestConfirmation(
                         Name,
                         new Confirmation
                         {

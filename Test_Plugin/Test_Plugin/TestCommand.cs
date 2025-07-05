@@ -11,7 +11,7 @@ public class TestCommand : ICommand
     public string Name => "TEST";
     public string Description  => "Displays hello message.";
     public LogDelegate Logger { get; set; }
-    protected IConfirmationService ConfirmationService { get; set; }
+    protected INotificationService NotificationService { get; set; }
 
     // Example service request of string array
     // public async Task<object> Execute(object request, string config)
@@ -40,9 +40,9 @@ public class TestCommand : ICommand
     // }
     
     public Task<object> Execute(OrchestratorRequest request, string configString, 
-        IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, IConfirmationService confirmationService)
+        IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, INotificationService notificationService)
     {
-        ConfirmationService  = confirmationService;
+        NotificationService  = notificationService;
         Logger = logFunction;
         var args = request.ServiceRequest as TestClass;
         // var args = request.GetServiceRequest<TestClass>();
@@ -71,7 +71,7 @@ public class TestCommand : ICommand
         await Logger(logLevel, message, exception);
     }
     
-    public Task<object> Initialize(string config, LogDelegate logFunction, IConfirmationService confirmationService)
+    public Task<object> Initialize(string config, LogDelegate logFunction, INotificationService notificationService)
     {
         return Task.FromResult<object>(null);
     }

@@ -11,11 +11,11 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
     public LogDelegate Logger { get; set; }
     public abstract string Name { get; }
     public abstract string Description { get; }
-    protected abstract IConfirmationService ConfirmationService { get; set; }
+    protected abstract INotificationService NotificationService { get; set; }
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, IConfirmationService confirmationService)
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, INotificationService notificationService)
     {
-        ConfirmationService =  confirmationService;
+        NotificationService =  notificationService;
         Logger = logFunction;
         var serviceRequest = request.ServiceRequest.GetServiceRequest<T>();
         var config = configString.ReadPluginConfig<TU>();
@@ -37,9 +37,9 @@ public abstract class CommandBase<T, TU>: ICommand where T : class, IPluginServi
         return Logger(logLevel, message, exception);
     }
     
-    public virtual Task<object> Initialize(string config, LogDelegate logFunction, IConfirmationService confirmationService)
+    public virtual Task<object> Initialize(string config, LogDelegate logFunction, INotificationService notificationService)
     {
-        ConfirmationService ??= confirmationService;
+        NotificationService ??= notificationService;
         return Task.FromResult<object>(null);
     }
 }

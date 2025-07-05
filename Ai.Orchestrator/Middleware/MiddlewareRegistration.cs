@@ -12,7 +12,7 @@ public static class MiddlewareRegistration
         services.AddSingleton<IPluginService, PluginService>();
         services.AddSingleton<ITaskScheduler, Services.TaskScheduler>();
         services.AddSingleton<ILoggingService, LoggingService>();
-        services.AddSingleton<IConfirmationService, ConfirmationService>();
+        services.AddSingleton<INotificationService, NotificationService>();
         
         return services;
     }
