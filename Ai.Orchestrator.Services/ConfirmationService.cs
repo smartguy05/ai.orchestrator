@@ -17,7 +17,7 @@ public class ConfirmationService : IConfirmationService
     private static IConfirmationPlugin _plugin;
     private Dictionary<Guid, Confirmation> _confirmations = new();
     private readonly IPluginService _pluginService;
-
+    
     public ConfirmationService(IOrchestrator orchestrator, ILoggingService loggingService, IPluginService pluginService)
     {
         _pluginService = pluginService;
@@ -33,7 +33,39 @@ public class ConfirmationService : IConfirmationService
         _plugin = pluginService.GetPlugin<IConfirmationPlugin>(_config.ConfirmationPlugin);
     }
 
-    public async Task<object> RequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
+    public async Task<object> RequestConfirmation(string serviceName, Confirmation confirmation, IPluginServiceRequest serviceRequest)
+    {
+        if (serviceRequest is null)
+        {
+            await _loggingService.LogError("RequestConfirmation: serviceRequest is null");
+            throw new Exception("Service Request is null");
+        }
+        
+        confirmation.Id ??= Guid.NewGuid();
+        serviceRequest.ConfirmationId = confirmation.Id.ToString();
+        var request = new OrchestratorRequest
+        {
+            Service = serviceName,
+            ServiceRequest = serviceRequest
+        };
+        var confirmationRequest = await ProcessRequestConfirmation(confirmation, request, _config.ConfirmationExpirationMinutes);
+        var isSuccessful = (bool?)confirmationRequest.GetType().GetProperty("Success")?.GetValue(confirmationRequest) ?? false;
+        if (isSuccessful)
+        {
+            return new
+            {
+                Success = true,
+                ConfirmationId = confirmation.Id.ToString()
+            };    
+        }
+                    
+        return new
+        {
+            Success = false
+        };
+    }
+    
+    private async Task<object> ProcessRequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
     {
         if (confirmation == null)
         {
