@@ -62,27 +62,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                         },
                         Id = Guid.NewGuid()
                     };
-                    serviceRequest.ConfirmationId = confirmation.Id.ToString();
-                    var request = new OrchestratorRequest
-                    {
-                        Service = Name,
-                        ServiceRequest = serviceRequest
-                    };
-                    var confirmationRequest = await ConfirmationService.RequestConfirmation(confirmation, request);
-                    var isSuccessful = (bool?)confirmationRequest.GetType().GetProperty("Success")?.GetValue(confirmationRequest) ?? false;
-                    if (isSuccessful)
-                    {
-                        return new
-                        {
-                            Success = true,
-                            ConfirmationId = confirmation.Id.ToString()
-                        };    
-                    }
-                    
-                    return new
-                    {
-                        Success = false
-                    };
+                    return await ConfirmationService.RequestConfirmation(Name, confirmation, serviceRequest);
                 }
 
                 if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
@@ -90,17 +70,15 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                     var success = await SendEmail(serviceRequest, config);
                     var message = success  ? "Email Sent!": "Unable to send email!";
                     return await ConfirmationService.RequestConfirmation(
+                        Name,
                         new Confirmation
                         {
                             ConfirmationMessage = message,
                             Content = null,
                             Options = new Dictionary<string, bool>()
                         },
-                        new OrchestratorRequest
-                        {
-                            Service = Name,
-                            ServiceRequest = null
-                        });
+                        new ServiceRequest()
+                        );
                 }
 
                 return new
@@ -114,6 +92,7 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                 if (string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
                 {
                     return await ConfirmationService.RequestConfirmation(
+                        Name,
                         new Confirmation
                         {
                             ConfirmationMessage = "Are you sure you want to delete this email?",
@@ -124,11 +103,8 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                                 { "No", false }
                             }
                         },
-                        new OrchestratorRequest
-                        {
-                            Service = Name,
-                            ServiceRequest = serviceRequest
-                        });
+                        serviceRequest
+                        );
                 }
 
                 if (ConfirmationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
@@ -136,17 +112,14 @@ public class EmailCommand: CommandBase<ServiceRequest,ServiceConfig>
                     var success = await DeleteEmail(serviceRequest, config);
                     var message = success > 0 ? "Email(s) Deleted!": "Unable to delete email(s)!";
                     return await ConfirmationService.RequestConfirmation(
+                        Name,
                         new Confirmation
                         {
                             ConfirmationMessage = message,
                             Content = null,
                             Options = new Dictionary<string, bool>()
                         },
-                        new OrchestratorRequest
-                        {
-                            Service = Name,
-                            ServiceRequest = null
-                        });
+                        null);
                 }
 
                 return new

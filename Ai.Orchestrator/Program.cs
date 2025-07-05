@@ -12,10 +12,18 @@ class Program
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers();
+        
         builder.Services
+            .AddCors(options =>
+            {
+                options.AddPolicy("AllowLocalhost",
+                    policy => policy.SetIsOriginAllowed(origin => origin.Contains("localhost"))
+                        .AllowAnyHeader()
+                        .AllowAnyMethod());
+            })
+        #if DEBUG
             .AddEndpointsApiExplorer()
             .AddSwaggerGen()
-            #if DEBUG
             .AddHttpLogging(options =>
             {
                 // Configure HTTP logging options
@@ -23,7 +31,7 @@ class Program
                 options.RequestBodyLogLimit = 4096;
                 options.ResponseBodyLogLimit = 4096;
             })
-            #endif
+        #endif
             .RegisterOrchestratorMiddleware();
 
         var app = builder.Build();
@@ -50,6 +58,7 @@ class Program
         
         app.UseHttpLogging()
             .UseHttpsRedirection()
+            .UseCors("AllowLocalhost")
             .UseAuthorization();
 
         app.MapControllers();

@@ -31,7 +31,7 @@ public class Orchestrator: IOrchestrator
         request.ServiceFunctions ??= new Dictionary<string, IEnumerable<string>>();
         if (request.ServiceFunctions.Count == 0)
         {
-            var serviceFunctions = await GetPluginContracts();
+            var serviceFunctions = _pluginService.GetPluginContracts();
             foreach (var function in serviceFunctions)
             {
                 request.ServiceFunctions.Add(function.Key, function.Value);
