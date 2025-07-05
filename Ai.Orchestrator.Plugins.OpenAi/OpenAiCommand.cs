@@ -12,11 +12,11 @@ public class OpenAiCommand : ICommand
     public string Name => "OpenAI";
     public string Description => "OpenAI integration";
     public LogDelegate Logger { get; set; }
-    protected IConfirmationService ConfirmationService { get; set; }
+    protected INotificationService NotificationService { get; set; }
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, IConfirmationService confirmationService)
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls, LogDelegate logFunction, INotificationService notificationService)
     {
-        ConfirmationService ??= confirmationService;
+        NotificationService ??= notificationService;
         Logger = logFunction;
         var serviceRequest = request.ServiceRequest?.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadPluginConfig<ServiceConfig>();
@@ -101,7 +101,7 @@ public class OpenAiCommand : ICommand
         return Logger(logLevel, message, exception);
     }
     
-    public Task<object> Initialize(string config, LogDelegate logFunction, IConfirmationService confirmationService)
+    public Task<object> Initialize(string config, LogDelegate logFunction, INotificationService notificationService)
     {
         return Task.FromResult<object>(null);
     }

@@ -43,7 +43,7 @@ class Program
         await loggingService.Log(LogLevel.Trace, "Plugin Service Started");
         var taskScheduler = app.Services.GetRequiredService<ITaskScheduler>();
         await loggingService.Log(LogLevel.Trace, "Task Scheduler Started");
-        var confirmationService = app.Services.GetRequiredService<IConfirmationService>();
+        var confirmationService = app.Services.GetRequiredService<INotificationService>();
         await loggingService.Log(LogLevel.Trace, "Confirmation Service Started");
         
         ServiceResolver.Initialize(app.Services);

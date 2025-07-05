@@ -13,7 +13,7 @@ public class PluginService : IPluginService
 {
     private readonly Config _config = new();
     private static LogDelegate _logger;
-    private static IConfirmationService _confirmationService;
+    private static INotificationService _notificationService;
     private static readonly Dictionary<string, Assembly> _assemblyCache = new (StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, PluginLoadContext> _contextCache = new (StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, List<object>> _pluginInstanceCache = new(StringComparer.OrdinalIgnoreCase);
@@ -155,21 +155,21 @@ public class PluginService : IPluginService
             if (command != null)
             {
                 var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-                return await command.Execute(request, config, GetTools(), _logger, _confirmationService);
+                return await command.Execute(request, config, GetTools(), _logger, _notificationService);
             }
         }
         await _logger(LogLevel.Warning, $"No plugin found with the name {request.Service}");
         throw new Exception("Invalid plugin specified!");
     }
     
-    public async Task InitializePlugins(LogDelegate logger, IConfirmationService confirmationService)
+    public async Task InitializePlugins(LogDelegate logger, INotificationService notificationService)
     {
         var plugins = _config.ActivePlugins.Split(",");
         if (!plugins.Any())
         {
             throw new Exception("Unable to find specified plugin");
         }
-        _confirmationService = confirmationService;
+        _notificationService = notificationService;
         _logger = logger;
 
         foreach (var plugin in plugins)
@@ -195,7 +195,7 @@ public class PluginService : IPluginService
                 // 3. Only call Initialize if the instance is an ICommand.
                 if (instance is ICommand command)
                 {
-                    tasks.Add(command.Initialize(config, logger, confirmationService));
+                    tasks.Add(command.Initialize(config, logger, notificationService));
                     await logger(LogLevel.Trace, $"-- Command {command.Name} Initialized --");
                 }
             }
