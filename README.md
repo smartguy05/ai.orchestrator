@@ -23,10 +23,47 @@ handling email and webhook requests. The service is extensible using plugins.
 ## Roadmap
 | Feature | Description | Planned Release |
 |--- | --- | --- |
-| Android Notifications | Send notifications to android devices using Firebase Android notification | July 2025 |
+| **Logging** |  |  |
+| Improved Message Logging | Log each message in order for easy troubleshooting | September 2025 |
+| Per-Agent Conversation History | Save conversation history with each agent for later retrieval | Q4 2025 |
+| Agent Tool Calling Logging | Log each tool call with the prompt that started it and each response | TBD |
+| Correlation Ids | Add Correlation Ids to logs to help with issue tracking | TBD |
+| **A2A** |  |  |
+| Per-Agent toolset | Each "mini-agent" can have a specific set of user-configured tools | September 2025 |
+| Discovery | How to discover agents | TBD |
+| Shared Workspace | Share context between agents | TBD |
+| Task delegation | Delegate tasks to other agents then recieve asynchronous response | TBD |
+| **Agent Scheduling & Automation** |  |  |
+| User configurable Web-Hooks | Allow user to configure webhooks | TBD 2025 |
+| Background Task Queuing & Prioritization | Create a queue of pending tasks which the assigned agent can choose prioritize and complete | TBD 2026 |
+| Manage scheduled tasks | Allow user to view/edit/create/delete | TBD |
+| Error Handling & Retry | Report errors and show status. Allow retrying tasks | TBD |
+| **Setup** |  |  |
 | Database configs | Store configs in database | July 2025 |
 | Multi-user | Using database, allow multiple users with individual configurations | August 2025 |
-| Per-Agent toolset | Each "mini-agent" can have a specific set of user-configured tools | September 2025 |
+| First time set-up | Walk through setting up initial settings. creating agents, and choosing the tools available to the agent | TBD 2025 |
+| API Key management | Manage API Keys for plugins | TBD 2025 |
+| Plugin Marketplace | A marketplace where users can select the plugins they want and add/remove them | TBD 2026 |
+| **Security** |  |  |
+| Sandboxed tool execution | All agents run their own tools in their own memory space | TBD 2026 |
+| Permissions | User/Agent permissions | TBD 2026 |
+| Tool Limits | Limit tool usage per agent | TBD 2026 |
+| OAuth2 | OAuth2 integration | TBD |
+| **Memory Optimization** |  |  |
+| Automatic Memory Summarization | Summarize conversation history automatically when the conversation starts to get too long | TBD 2025/2026 |
+| RAG Relevance Scoring | Score Vector DB data for better RAG retrieval | TBD 2026 |
+| Memory Cleanup & Archving | Clean up Vector DB of stale/ out of date data | TBD 2026 |
+| **Agent Performance Dashboard** |  |  |
+| Real-time Agent Status | Show current agent status, what it's working on, current log stream | TBD 2026 |
+| Resource Usage Monitoring | Show tokens, API calls, execution time, per Agent | TBD 2026 |
+| Cost Tracking | Track API costs per Agent | TBD 2026 |
+| Success/Failure Tracking | Track how often the Agent is successful | TBD 2026 |
+| **Mobile** |  |  |
+| Android Notifications | Send notifications to android devices using Firebase Android notification | July 2025 |
+| Voice | Speak with agent using your voice | TBD |
+| **Misc** |  |  |
+| Agent Testing | Framwork for testing agents | TBD 2026 |
+
 
 ## Overview
 
