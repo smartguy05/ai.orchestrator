@@ -5,6 +5,7 @@ handling email and webhook requests. The service is extensible using plugins.
 
 ## Table of Contents
 
+- [Roadmap](#roadmap)
 - [Overview](#overview)
 - [Features](#features)
 - [Plugins](#plugins)
@@ -18,6 +19,14 @@ handling email and webhook requests. The service is extensible using plugins.
 - [License](#license)
 
 ---
+
+## Roadmap
+| Feature | Description | Planned Release |
+|--- | --- | --- |
+| Android Notifications | Send notifications to android devices using Firebase Android notification | July 2025 |
+| Database configs | Store configs in database | July 2025 |
+| Multi-user | Using database, allow multiple users with individual configurations | August 2025 |
+| Per-Agent toolset | Each "mini-agent" can have a specific set of user-configured tools | September 2025 |
 
 ## Overview
 
