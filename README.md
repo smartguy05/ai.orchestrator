@@ -57,6 +57,8 @@
 | RAG Relevance Scoring | Score Vector DB data for better RAG retrieval | TBD 2026 |
 | Memory Cleanup & Archving | Clean up Vector DB of stale/ out of date data | TBD 2026 |
 | **Agent Performance Dashboard** |  |  |
+| Agent Feedback | Provide feedback when a request doesn't act as intended. Update system prompt | Q4 2025 |
+| Agent Feedback enchancements | Provide per-project instructions | TBD 2026 |
 | Real-time Agent Status | Show current agent status, what it's working on, current log stream | TBD 2026 |
 | Resource Usage Monitoring | Show tokens, API calls, execution time, per Agent | TBD 2026 |
 | Cost Tracking | Track API costs per Agent | TBD 2026 |
@@ -64,7 +66,7 @@
 | **Mobile** |  |  |
 | Android Notifications | Send notifications to android devices using Firebase Android notification | July 2025 |
 | Voice | Speak with agent using your voice | TBD |
-| **Misc** |  |  |
+| **Other** |  |  |
 | Agent Testing | Framwork for testing agents | TBD 2026 |
 
 ## What's New
