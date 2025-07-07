@@ -1,10 +1,12 @@
 # Ai.Orchestrator
 
-**Ai.Orchestrator** is a service designed to orchestrate AI-related tasks. There are built-in plugins for
-handling email and webhook requests. The service is extensible using plugins.
+**Ai.Orchestrator** is a modular, extensible orchestration platform designed to empower AI agents with robust, plugin-driven access to email, webhooks, notifications, scheduling, memory, and much more. It provides a central controller for automating and coordinating AI-related tasks across multiple domains and services.
+
+---
 
 ## Table of Contents
 
+- [What's New](#whats-new)
 - [Roadmap](#roadmap)
 - [Overview](#overview)
 - [Features](#features)
@@ -13,14 +15,15 @@ handling email and webhook requests. The service is extensible using plugins.
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Running the Orchestrator](#running-the-orchestrator)
-- [Usage](#usage)
 - [Configuration](#configuration)
+- [Usage](#usage)
 - [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ## Roadmap
+
 | Feature | Description | Planned Release |
 |--- | --- | --- |
 | **Logging** |  |  |
@@ -64,334 +67,136 @@ handling email and webhook requests. The service is extensible using plugins.
 | **Misc** |  |  |
 | Agent Testing | Framwork for testing agents | TBD 2026 |
 
+## What's New
+
+Recent substantial changes and newly added functionality include:
+
+- **Notification Service**: Added a simple text notification service for outbound alerts and updates. ([#25](https://github.com/smartguy05/ai.orchestrator/pull/25))
+- **Confirmation Service**: Enhanced support for user confirmation flows—now supports sending confirmation prompts without requiring options and improved handling in Email workflows. ([#24](https://github.com/smartguy05/ai.orchestrator/pull/24), [#23](https://github.com/smartguy05/ai.orchestrator/pull/23), [#22](https://github.com/smartguy05/ai.orchestrator/pull/22))
+- **Plugin Service Performance**: Improved plugin service performance by keeping plugin instances alive and resolving multiple issues with plugin lifecycle management. ([#22](https://github.com/smartguy05/ai.orchestrator/pull/22))
+- **Logging Plugins**: Custom logging plugins are now supported—extend the `ILoggingPlugin` interface and configure via dedicated JSON files. Multiple logging plugins are supported in parallel. ([#21](https://github.com/smartguy05/ai.orchestrator/pull/21), [#19](https://github.com/smartguy05/ai.orchestrator/pull/19))
+- **Mini-Agent System**: Introduced "mini agents" with configurable toolsets per agent, advancing towards agent-to-agent (A2A) delegation and shared context. ([#20](https://github.com/smartguy05/ai.orchestrator/pull/20))
+- **Task Scheduler**: Core support for scheduling complex, multi-step AI tasks triggered by time or events. ([#17](https://github.com/smartguy05/ai.orchestrator/pull/17))
+- **Memory Improvements**: Enhanced long-term and short-term memory modules for richer conversational and contextual awareness. ([#18](https://github.com/smartguy05/ai.orchestrator/pull/18))
+---
 
 ## Overview
 
-**Ai.Orchestrator** acts as a central controller for different AI-related tasks:
+Ai.Orchestrator enables you to:
 
-- **Email**: Read, Send, and Delete emails for the configured email address.
-- **Webhook**: Webhook interface for api.
-- **OpenAI**: OpenAI API integration. Can be configured to use a local OpenAI compliant API.
-- **Plugin/Module Integration**: Easily integrate external modules for additional functionality (logging, notifications, etc.).
-- **Short-term chat memory**: Maintain short-term chat memory for multi-shot prompting
-- **Long-term chat memory**: Remember details about the user to help with context in future requests
+- Centralize and automate AI task execution using a flexible plugin architecture.
+- Integrate email, webhooks, notification, scheduling, logging, memory, and more—out of the box or via custom plugins.
+- Provide per-agent tool configuration, conversation memory, and event-driven task automation.
 
-Plugins:
-
-- **RAG**: RAG functionality using [Support Channel KB](https://github.com/smartguy05/support_channel_kb)
-- **Google Calendar**: Read Calendar events (Planned to expand features)
-- **Python Runner**: Run python scripts
-- **Memos**: Memos integration with locally hosted (UseMemos server)[https://www.usememos.com/]
-- **Web Search**: Add internet search results for context
-- **Home Assistant Assist**: Communicate with your Home Assistant instance using the Assist API
-
-Planned:
-
-- **Request Stream**: Use stream to allow updating periodically to the user
-- **File Upload**: Allow file upload for context/plugin purposes
-- **Request Security**: Validate user or use different configs based on user
-- **Task Scheduler**: Manages scheduling for future AI tasks
-- **Task Manager**: Handles creation, monitoring, and execution of tasks
-- **Event Watcher**: Performs an AI task when a specified event occurs
-- **Event Scheduler**: Handles creation, monitoring, and lifecycles of Event Watchers
+---
 
 ## Features
 
-- **Modular Architecture**: Add or remove AI-related modules without disrupting the entire system.
-- **Pluggable Components**: Swap out scheduling, storage, or model inference modules via configurations.
-- **Configurable**: Plugins are configurable by their own config json files
+- **Modular & Extensible**: Easily add/remove plugins (email, webhook, notifications, calendar, logging, etc.) without disrupting the system.
+- **Agent-Oriented**: Assign mini-agents with configurable toolsets and track their conversations and activities.
+- **Pluggable Components**: Swap out storage, scheduling, or inference modules.
+- **Rich Memory**: Short- and long-term conversational memory, with RAG/KB support.
+- **Task Scheduling**: Schedule complex, multi-step workflows for future or recurring execution.
+- **Notification & Confirmation**: Built-in services for user notifications and confirmations.
+- **Logging & Monitoring**: Multi-plugin logging support, auditing, and monitoring of agent/tool activity.
+- **Webhooks & Integrations**: Expose REST endpoints to trigger orchestrator workflows from external services.
+- **Secure & Configurable**: Per-plugin configuration with support for API keys, OAuth, and more.
+
+---
 
 ## Plugins
 
-**Ai.Orchestrator** is extensible using plugins placed into the plugins directory as specified in the environment
-variable or launchSettings.json. Plugins should expose an ICommand object which accepts an OrchestratorRequest,
-a string containing the json value of the configuration for the plugin, and a list of available tool calls
-which are populated by Orchestrator from the plugin configs. Each plugin can return either an object as a return
-result or another OrchestratorRequest so that more actions may be taken. Using this method a series of commands
-can be made to perform a complex action.
+Ai.Orchestrator comes with a suite of official plugins, with support for third-party/community plugins as well:
 
-### **Example Process using plugins:**
+- **Email Plugin**  
+  Read, send, and delete emails using SMTP/IMAP and configurable providers. Includes validation, autofac support, and OpenAI tool integration.
 
-NOTE: This example is using the TextController endpoint
-1. User Request:
-```
-{
-  "userPrompt": "Respond to my last email, ask them when we can meet up.",
-  "systemPrompt": "You are a helpful assistant. Your job is to help me with handling emails.",
-  "conversationId": null
-}
-```
-*conversationId is null unless you are continuing an in progress conversation. A successful result will return a Conversation Id you can use to do multi-shot prompting instead of single shot as shown in this example*
+- **Webhook Plugin**  
+  Register HTTP endpoints that trigger orchestrator workflows from external events/services.
 
-2. The request is passed to the OpenAI compliant API along with a list of the available tool functions.
+- **Notification Plugin**  
+  Manage confirmation flows for user input or action approval or send text notifications to users or external systems.
+  
+- **Logging Plugins**  
+  Support for multiple logging providers, including file and custom logging plugins.
 
-3. The API responds with a tool call to perform, "get_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
+- **Task Scheduler**  
+  Schedule and manage future AI tasks and workflows.
 
-4. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
+- **Memory Plugins**  
+  Support both short-term (chat context) and long-term (user data, conversations) memory.
 
-5. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to get the requested email.
+- **RAG, Google Calendar, Python Runner, Memos, Web Search, Home Assistant Assist**  
+  Expand system capabilities to knowledge base retrieval, calendar, scripting, note-taking, web search, and smart home control.
 
-6. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator.
+*For more details on each plugin, see the respective plugin README or the [Plugins Directory](./Ai.Orchestrator.Plugins).*
 
-7. Orchestrator sees that the~~~~ requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
-
-8. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
-
-9. The API responds with a new tool call to perform, "send_email", and forwards the request, along with any parameters like date range, subject, etc. to Orchestrator.
-
-10. Orchestrator determines the correct plugin to use and sends the request to the Email Plugin.
-
-11. The Email Plugin will use the values in the config file, as well as the parameters passed to it from the OpenAI tool call, to send the requested email.
-
-12. A new OrchestratorRequest is created (because a tool call id existed in the object) and passed back to Orchestrator with a true (email sent) or false (didn't send) value.
-
-13. Orchestrator sees that the requester is the OpenAI plugin so the information from the Email Plugin is forwarded to the OpenAI Plugin.
-
-14. The OpenAI Plugin takes the data from the Email Plugin, along with the previous prompt information and sends that to the OpenAI compliant API.
-
-15. The API responds that it was successful (or not) based on the value returned from the Email Plugin then returns a message stating success or not:
-```
-{
-  "conversationId": "da8a5ffd-7a1e-4abe-8c07-6399e130c21d",
-  "result": "I have sent the reply to Jordan Reynolds requesting a meeting on Friday."
-}
-```
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-- **.NET 7+** (or whichever version your project supports)
-- A modern **IDE** or text editor (e.g., Visual Studio, Rider, VS Code)
-- Basic knowledge of C# and .NET Core
-- Instance of Redis running (I use docker desktop on Windows)
-- Enable Key Space Events in Redis `CONFIG SET notify-keyspace-events KEA
-`
+- [.NET 8+](https://dotnet.microsoft.com/en-us/download/dotnet)
+- Redis (for memory, e.g. via Docker Desktop)
+- ChromaDB (for long-term memory, e.g. via Docker Desktop)
+- Modern IDE (VS, Rider, VS Code)
+- Basic C#/.NET Core knowledge
 
 ### Installation
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/smartguy05/ai.orchestrator.git
-   ```
+```bash
+git clone https://github.com/smartguy05/ai.orchestrator.git
+cd ai.orchestrator/Ai.Orchestrator
+dotnet restore
+dotnet build
+```
 
-2. **Navigate into the Project**
-   ```bash
-   cd ai.orchestrator/Ai.Orchestrator
-   ```
-
-3. **Restore NuGet Packages**
-   ```bash
-   dotnet restore
-   ```
-
-4. **Build the Project**
-   ```bash
-   dotnet build
-   ```
 ### Running the Orchestrator
-`dotnet run`
 
-### Creating Plugins
+```bash
+dotnet run
+```
 
-- Edit .csproj file, add EnableDynamicLoading
+---
 
-`<EnableDynamicLoading>true</EnableDynamicLoading>`
+## Configuration
 
-- Example csproj settings:
-  ```
-  <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <EnableDynamicLoading>true</EnableDynamicLoading>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <OutputPath>..\..\Ai.Orchestrator\bin\Debug\net7.0\Plugins</OutputPath>
-    </PropertyGroup>
-    <PropertyGroup>
-        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    </PropertyGroup>
-    <ItemGroup>
-        <ProjectReference Include="..\..\Ai.Orchestrator.Common\Ai.Orchestrator.Common.csproj">
-        </ProjectReference>
-        <ProjectReference Include="..\..\Ai.Orchestrator.Models\Ai.Orchestrator.Models.csproj">
-            <Private>false</Private>
-            <ExcludeAssets>runtime</ExcludeAssets>
-        </ProjectReference>
-    </ItemGroup>
-  </Project>
-    ```
+- **Main orchestrator settings**: Environment variables or `launchSettings.json`.
+- **Plugin configs**: Each plugin is configured via its own JSON file in the config directory (see plugin README for schema).
+- **Key environment variables**:  
+  - `PluginDirectory` — where plugins are loaded from  
+  - `ConfigDirectory` — where plugin configs are stored  
+  - `ActivePlugins` — comma-separated list of enabled plugins
 
-- Example Plugin Configs
-  
-- Ai.Orchestrator.Plugins.OpenAI
-    ```
-    {
-        "name": "openai",
-        "contract": {},
-        "description": "Open AI integration",
-        "toolFunctions": [],
-        "openAiApiKey": "sk-proj-your-key-here",
-        "openAiUrl": "https://api.openai.com/v1/chat/completions",
-        "redisConnectionString": "localhost:6379"
-    }
-    ```
+*See example config files in the repo for reference.*
+
 ---
 
 ## Usage
 
-**NOTE**: /chain controller endpoints are not tested yet and probably not working
-
-**Orchestrator.cs**: The main service class that orchestrates different tasks and modules.
-
-### Controllers
-**Data Controller**: Use this to test your plugins before handing them off to the Orchestrator
-
-~Example test request (WebCrawler Plugin example)~
-```
-{
-  "serviceRequest": {
-    "requestUrl": "https://google.com"
-  },
-  "plugin": "Ai.Orchestrator.Plugins.Webcrawler"
-}
-```
-
-**Text Controller**: Use this to chat with the Orchestrator. This can also be used as the primary endpoint for APIs. Request streaming will be available in the future.
-~Example test request~
-```
-{
-  "userPrompt": "The text your want to send to Orchestrator",
-  "systemPrompt": "This is optional. If left null or empty the prompt from the config is used",
-  "conversationId": "This is optional. Use this to continue with a conversation, if you have an existing conversation Id, otherwise set to null"
-}
-```
-**Webhook Controller**: Use this to send tasks to the Orchestrator that do not require a response.
-
-**Scheduled Task Controller**: Use this to view, edit, and delete scheduled Orchestrator tasks
-
-## Configuration
-
-### Configuration of Orchestrator is handled by environment variables or launchSettings.json 
-```
-   "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "PluginDirectory": "Plugins",
-        "ConfigDirectory": "Configs",
-        "ActivePlugins": "Test_Plugin,Ai.Orchestrator.Plugins.Webhook,Ai.Orchestrator.Plugins.Email,Ai.Orchestrator.Plugins.UseMemos,Ai.Orchestrator.Plugins.GoogleCalendar,Ai.Orchestrator.Plugins.OpenAi"
-      }
-```
-
-### Plugin configuration is handled by each plugin with json files in the ConfigDirectory location
-
-NOTE: I used Claude.ai to help craft my System Prompt
-
-- Ai.Orchestrator.Plugins.OpenAi
-    ```
-    {
-        "name": "openai",
-        "description": "Open AI integration",
-        "openAiApiKey": "sk-your_open_ai_key_here",
-        "openAiUrl": "https://api.openai.com/v1/chat/completions",
-        "redisConnectionString": "your redis connection string here (used for short-term chat memory)",
-        "defaultSystemPrompt": "## Identity and Purpose\n- You are an AI assistant specialized in supporting Anthony.\n- Your core mission is to provide efficient, accurate, and proactive assistance.\n- Always prioritize Anthony's needs while maintaining ethical and professional standards.\n- If you are asked for information about Anthony, his family, or home, first use the 'search_support_channels' tool to look up that information.\n\n## Information Management\n### Information Retrieval Strategy\n1. Hierarchical Information Search\n   - Primary Source: 'search_support_channels'\n     * First point of reference for long-term, critical information\n     * Ensures consistency and reliability of retrieved data\n   \n   - Secondary Source: `search_web`\n     * Used when internal sources are exhausted\n     * Provides external context and up-to-date information\n\n2. Information Validation Protocols\n   - Cross-reference information from multiple sources, if it seems necessary\n   - Flag potential inconsistencies or gaps in available data\n   - Maintain a high standard of information accuracy\n\n### Memory Management\n- Use `save_support_channel_information` strategically:\n  * Store verified, high-impact information\n  * Organize data with clear categorization\n  * Implement periodic review and cleanup mechanisms\n- Ensure data privacy and security in all memory interactions\n\n## Tool Execution Framework\n### Code and Task Execution\n1. Python Script Execution\n   - Utilize `run_python_script` with comprehensive checks:\n     * Pre-execution validation of script integrity\n     * Detailed output parsing\n     * Error tracking and intelligent error handling\n   - Provide context-rich explanations of code results\n   - Suggest optimizations or alternative approaches when applicable\n\n2. Multi-Tool Coordination\n   - Implement intelligent tool sequencing\n   - Create dynamic execution plans based on task complexity\n   - Balance parallel and sequential tool invocations\n\n### Communication and Monitoring\n1. Proactive Notification System\n   - Use `send_telegram_message` for:\n     * Critical updates\n     * Task completion confirmations\n     * Potential issue alerts\n   - Maintain message clarity, brevity, and actionability\n\n2. Service Health Monitoring\n   - When a tool fails, run a health check for that tool if it is available\n   - Immediate escalation of service disruptions\n   - Provide diagnostic information and potential mitigation strategies\n\n## Operational Principles\n- Transparency Commitment\n  * Clear communication about capabilities\n  * Honest acknowledgment of limitations\n  * No fabrication or unsupported claims\n\n- Decision-Making Framework\n  * Prioritize accuracy and relevance\n  * Seek clarification for ambiguous requests\n  * Provide context-aware recommendations\n\n## Ethical Guardrails\n- Privacy Protection\n  * Strict confidentiality of personal and sensitive information\n  * Compliance with data protection standards\n\n- Objective Assistance\n  * Provide balanced, unbiased support\n  * Avoid personal judgments or speculation\n\n- Adaptive Learning\n  * Continuously refine understanding of Anthony's preferences\n  * Personalize assistance while maintaining core ethical principles\n\n- Personality\n  * Add a little personality to your responses, but please be nice!",
-        "model": "gpt-4o-mini"
-    }
-    ```
-- Test_Plugin
-  ```
-  {
-      "name": "test",
-      "description": "A plugin to test orchestrator",
-      "contract": { },
-      "tools": [
-        {
-          "type": "function",
-          "function": {
-            "name": "test_plugin",
-            "description": "A test plugin to see if plugins are working. You should not use this plugin unless specifially asked to do so.",
-            "parameters": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "A test name value"
-                },
-                "value": {
-                  "type": "string",
-                  "description": "A test description value"
-                }
-              },
-              "required": []
-            } 
-          }
-        }
-      ],
-      "toolFunctions": [
-        "test_plugin"
-      ],
-      "testName": "Test Name",
-      "testName2": "Test Name 2"
-  }
-  ```
-- Ai.Orchestrator.Plugins.Webhook
-  ```
-    {
-      "name": "webhook",
-      "description": "A plugin for calling configured webhooks",
-      "contract": { },
-      "tools": [
-          {
-              "type": "function",
-              "function": {
-                  "name": "webhook",
-                  "description": "Use this function to call a specified webhook.",
-                  "properties": {
-                      "type": "object",
-                      "properties": {
-                          "name": {
-                              "type": "string",
-                              "description": "The name of the webhook to use"
-                          },
-                          "value": {
-                              "type": "string",
-                              "description": "The value to send to the webhook"
-                          }
-                      },
-                      "required": ["name","value"]
-                  }
-              }
-          }
-      ],
-      "toolFunctions": [
-          "webhook"
-      ],
-      "webhooks": [
-          {
-              "name": "HomeAssistant",
-              "url": "http://homeassistant_ip:port/api/webhook/webhook-id"
-          }	
-      ]
-  }
-  ```
+- Use the **Text Controller** endpoint to chat or issue requests to the orchestrator with multi-shot conversation support.
+- Use the **Webhook Controller** to receive and process HTTP event triggers.
+- Use the **Scheduled Task Controller** to view, edit, and manage scheduled tasks.
+- Test plugins directly via the **Data Controller**.
+- Plugin commands and tool calls can be chained for complex workflows.
 
 ---
 
 ## Contributing
 
-1. **Fork** the repository
-2. **Create a new branch** (`feature/xyz`)
-3. **Commit your changes**
-4. **Create a Pull Request** describing your changes in detail
+1. **Fork** the repository.
+2. **Create a branch** for your feature/bugfix.
+3. **Commit** your changes.
+4. **Open a Pull Request** with a clear description.
 
-We welcome bug reports, feature requests, and pull requests from the community!
+All contributions, bug reports, and feature requests are welcome!
 
 ---
 
 ## License
 
-This repository is licensed under the [MIT License](LICENSE). Feel free to use and modify this project in accordance with the terms of the license.
+This repository is licensed under the [MIT License](LICENSE).  
+See the LICENSE file for details.
 
 ---
