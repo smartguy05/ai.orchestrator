@@ -1,0 +1,4 @@
+# Ignore database data directories
+chroma_data/
+redis_data/
+postgres_data/

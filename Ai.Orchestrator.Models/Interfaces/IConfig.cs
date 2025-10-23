@@ -13,4 +13,17 @@ public interface IConfig
     public string LoggingPluginsString { get; set; }
     public List<string> LoggingPlugins { get; }
     public bool LogToConsole { get; set; }
+
+    // Database configuration
+    public string PostgresConnectionString { get; set; }
+
+    // JWT configuration
+    public string JwtSecret { get; set; }
+    public string JwtIssuer { get; set; }
+    public string JwtAudience { get; set; }
+    public int JwtExpirationMinutes { get; set; }
+
+    // Admin user configuration
+    public string AdminUsername { get; set; }
+    public string AdminPassword { get; set; }
 }

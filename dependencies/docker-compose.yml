@@ -20,3 +20,21 @@ services:
       - ./redis_data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=orchestrator
+      - POSTGRES_PASSWORD=orchestrator_dev_password
+      - POSTGRES_DB=orchestrator
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orchestrator"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
