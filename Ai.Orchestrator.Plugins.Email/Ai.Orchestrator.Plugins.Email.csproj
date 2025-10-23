@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 	</PropertyGroup>
@@ -11,9 +11,13 @@
 		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
 	</PropertyGroup>
 
-	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-	  <OutputPath>..\Ai.Orchestrator\bin\Debug\net8.0\Plugins\</OutputPath>
-	</PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>../../Ai.Orchestrator/Ai.Orchestrator/bin/Debug/net9.0/Plugins/</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <OutputPath>../../Ai.Orchestrator/Ai.Orchestrator/bin/Release/net9.0/Plugins/</OutputPath>
+    </PropertyGroup>
 
 	<ItemGroup>
 	  <PackageReference Include="HtmlAgilityPack" Version="1.12.0" />

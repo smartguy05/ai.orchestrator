@@ -23,7 +23,7 @@ COPY . .
 RUN dotnet publish ./Ai.Orchestrator/Ai.Orchestrator.csproj -c Release -o /out
 
 # Use the runtime-only image to keep the final image size smaller
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 
 # Set the working directory inside the runtime container
 WORKDIR /app

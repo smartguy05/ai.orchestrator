@@ -18,3 +18,7 @@ Ai.Orchestrator.Plugins.Memories/bin/
 Ai.Orchestrator.Plugins.Mcp/obj/
 Ai.Orchestrator.Plugins.Mcp/bin/
 Test_Plugin/Test_Plugin/obj/
+/Ai.Orchestrator.Plugins.Tests/bin/
+/Ai.Orchestrator.Plugins.Tests/obj/
+/Ai.Orchestrator.Tests/bin/
+/Ai.Orchestrator.Tests/obj/

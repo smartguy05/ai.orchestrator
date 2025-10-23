@@ -387,12 +387,18 @@ namespace Ai.Orchestrator.Plugins.Memories
                     catch (Exception createEx)
                     {
                         await _logger(LogLevel.Error,$"Error creating collection via CreateCollection: {createEx.Message}");
-                        
+
                         // As a fallback, try GetOrCreateCollection
                         await _logger(LogLevel.Error,"Attempting GetOrCreateCollection as fallback...");
                         try
                         {
-                            collection = await _chromaClient.GetOrCreateCollection(name, new Dictionary<string, object>());
+                            // ChromaDB requires non-empty metadata dictionary
+                            collection = await _chromaClient.GetOrCreateCollection(
+                                name,
+                                new Dictionary<string, object>
+                                {
+                                    ["description"] = $"Memory collection created at {DateTime.UtcNow:O}"
+                                });
                         }
                         catch (Exception fallbackEx)
                         {

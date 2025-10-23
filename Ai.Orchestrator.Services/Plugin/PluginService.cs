@@ -242,7 +242,7 @@ public class PluginService : IPluginService
         {
             // This condition finds any concrete class that implements a known plugin interface.
             // You can add more interfaces here like || typeof(ILoggingPlugin).IsAssignableFrom(type)
-            if (type.IsClass && !type.IsAbstract && (typeof(ICommand).IsAssignableFrom(type) || typeof(IConfirmationPlugin).IsAssignableFrom(type)))
+            if (type.IsClass && !type.IsAbstract && (typeof(ICommand).IsAssignableFrom(type) || typeof(INotificationPlugin).IsAssignableFrom(type)))
             {
                 // Ensure we only create one instance of a class, even if it implements multiple interfaces.
                 if (!instances.Any(i => i.GetType() == type))

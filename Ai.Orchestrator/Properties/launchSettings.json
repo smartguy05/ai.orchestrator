@@ -15,7 +15,10 @@
         "RedisConnectionString": "localhost:6379",
         "RedisConversationSubject": "openai.plugin",
         "LoggingPluginsString": "Ai.Orchestrator.Logging.FileLogger",
-        "ConfirmationExpirationMinutes": 120
+        "ConfirmationExpirationMinutes": "120",
+        "ConfirmationPlugin": "Ai.Orchestrator.Plugins.Telegram",
+        "LogToConsole": "true",
+        "MinimumLogLevel": "4"
       }
     },
     "https": {

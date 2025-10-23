@@ -1,4 +1,4 @@
-﻿using Ai.Orchestrator.Models.Extensions;
+using Ai.Orchestrator.Models.Extensions;
 
 namespace Ai.Orchestrator.Models.Helpers;
 
@@ -31,18 +31,30 @@ public static class OrchestratorHelpers
     {
         try
         {
-            if (serviceRequest is IDictionary<string, object> dynamicRequest && 
-                dynamicRequest.TryGetValue("ConversationId", out var conversationId) && 
-                conversationId is string typedConversationId)
+            if (serviceRequest is IDictionary<string, object> dynamicRequest)
             {
-                return typedConversationId;
+                // Try exact match first
+                if (dynamicRequest.TryGetValue("ConversationId", out var conversationId) &&
+                    conversationId is string typedConversationId)
+                {
+                    return typedConversationId;
+                }
+
+                // Try case-insensitive match
+                var key = dynamicRequest.Keys.FirstOrDefault(k =>
+                    string.Equals(k, "ConversationId", StringComparison.OrdinalIgnoreCase));
+
+                if (key != null && dynamicRequest[key] is string caseInsensitiveId)
+                {
+                    return caseInsensitiveId;
+                }
             }
         }
         catch (Exception e)
         {
             return null;
         }
-        
+
         return null;
     }
 }
