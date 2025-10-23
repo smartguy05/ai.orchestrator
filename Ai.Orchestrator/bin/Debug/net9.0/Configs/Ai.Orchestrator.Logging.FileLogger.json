@@ -1,0 +1,6 @@
+{
+  "name": "Ai.Orchestrator.Logging.FileLogger",
+  "description": "Logs to the specified file",
+  "minimumLogLevel": 3,
+  "loggingFolder": "C:/orchestrator-logs"
+}

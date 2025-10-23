@@ -1,0 +1,22 @@
+services:
+  chromadb:
+    image: chromadb/chroma:0.6.3  # Pinned to last version supporting v1 API (TODO: migrate to v2 API)
+    container_name: chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped

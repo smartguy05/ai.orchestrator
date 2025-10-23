@@ -14,7 +14,7 @@ public class NotificationService : INotificationService
     private static string _redisConversationSubject;
     private static ConnectionMultiplexer _redisConnection;
     private static Config _config = new();
-    private static IConfirmationPlugin _plugin;
+    private static INotificationPlugin _plugin;
     private Dictionary<Guid, Confirmation> _confirmations = new();
     private readonly IPluginService _pluginService;
     
@@ -30,7 +30,7 @@ public class NotificationService : INotificationService
             _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString, x=> x.AllowAdmin = true);   
         }
 
-        _plugin = pluginService.GetPlugin<IConfirmationPlugin>(_config.ConfirmationPlugin);
+        _plugin = pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
     }
 
     public async Task<object> SendNotification(string message)
@@ -206,7 +206,7 @@ public class NotificationService : INotificationService
     {
         if (_plugin is null)
         {
-            _plugin = _pluginService.GetPlugin<IConfirmationPlugin>(_config.ConfirmationPlugin);
+            _plugin = _pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
         }
 
         if (_plugin is not null)

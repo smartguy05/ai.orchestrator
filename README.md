@@ -53,6 +53,7 @@
 | Tool Limits | Limit tool usage per agent | TBD 2026 |
 | OAuth2 | OAuth2 integration | TBD |
 | **Memory Optimization** |  |  |
+| ChromaDB v2 API Migration | Migrate from ChromaDB v1 API to v2 API. Currently pinned to ChromaDB 0.6.3 for v1 API compatibility with ChromaDB.Client NuGet package. Need to evaluate and migrate to a v2-compatible .NET client (e.g., VENative.ChromaDB.Client) | Q3 2025 |
 | Automatic Memory Summarization | Summarize conversation history automatically when the conversation starts to get too long | TBD 2025/2026 |
 | RAG Relevance Scoring | Score Vector DB data for better RAG retrieval | TBD 2026 |
 | Memory Cleanup & Archving | Clean up Vector DB of stale/ out of date data | TBD 2026 |
@@ -156,8 +157,14 @@ dotnet build
 
 ### Running the Orchestrator
 
-```bash
+```bash~~~~
 dotnet run
+```
+
+#### Running Orchestrator Dependencies
+cd to dependencies folder
+```bash
+docker-compose up -d
 ```
 
 ---

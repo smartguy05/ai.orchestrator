@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Ai.Orchestrator.Models.Extensions;
@@ -22,14 +22,14 @@ public class FlexibleDateTimeConverter : JsonConverter<DateTime>
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var stringValue = reader.GetString();
-        
+
         if (string.IsNullOrEmpty(stringValue))
             throw new JsonException("Cannot convert null or empty string to DateTime");
 
         // Try parsing with various formats
         foreach (var format in DateTimeFormats)
         {
-            if (DateTime.TryParseExact(stringValue, format, null, System.Globalization.DateTimeStyles.None, out var result))
+            if (DateTime.TryParseExact(stringValue, format, null, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var result))
                 return result;
         }
 
@@ -86,32 +86,43 @@ public static class ObjectConverters
     {
         if (request is not null)
         {
-            using JsonDocument doc = JsonDocument.Parse(request.ToString());
-            var element = doc.RootElement;
-            if (element.ValueKind == JsonValueKind.Array)
+            try
             {
-                if (typeof(T) == typeof(string))
+                using JsonDocument doc = JsonDocument.Parse(request.ToString());
+                var element = doc.RootElement;
+                if (element.ValueKind == JsonValueKind.Array)
                 {
+                    if (typeof(T) == typeof(string))
+                    {
+                        return element.EnumerateArray()
+                            .Select(s => s.GetString())
+                            .ToList() as List<T>;
+                    }
+
+                    var options = GetDeserializeOptions();
                     return element.EnumerateArray()
-                        .Select(s => s.GetString())
-                        .ToList() as List<T>;
+                        .Select(jsonElement =>
+                        {
+                            try
+                            {
+                                // Deserialize directly from the JsonElement instead of converting to string first
+                                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText(), options);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[GetServiceRequestArray<{typeof(T).Name}>] Error deserializing array element: {ex.Message}");
+                                return default;
+                            }
+                        })
+                        .Where(item => item != null)
+                        .ToList();
                 }
-                
-                var options = GetDeserializeOptions();
-                return element.EnumerateArray()
-                    .Select(jsonElement => {
-                        try {
-                            // Deserialize directly from the JsonElement instead of converting to string first
-                            return JsonSerializer.Deserialize<T>(jsonElement.GetRawText(), options);
-                        }
-                        catch (Exception ex) {
-                            Console.WriteLine($"[GetServiceRequestArray<{typeof(T).Name}>] Error deserializing array element: {ex.Message}");
-                            return default;
-                        }
-                    })
-                    .Where(item => item != null)
-                    .ToList();
-            }   
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"[GetServiceRequestArray<{typeof(T).Name}>] Error parsing JSON: {ex.Message}");
+                // Return empty collection for invalid JSON
+            }
         }
 
         return Enumerable.Empty<T>();

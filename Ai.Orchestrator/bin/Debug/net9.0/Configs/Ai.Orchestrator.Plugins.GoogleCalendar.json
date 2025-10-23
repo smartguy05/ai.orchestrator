@@ -1,0 +1,255 @@
+{
+  "name": "Ai.Orchestrator.Plugins.GoogleCalendar",
+  "description": "Google Calendar Integration",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar_events",
+        "description": "Use this tool to geta list of the calendar events",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar_event",
+        "description": "Use this tool to get a specific calendar event using the calendar event id. The calendar id is optional.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit_calendar_event",
+        "description": "Use this tool to edit a specific calendar event.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            },
+            "summary": {
+              "type": "string",
+              "description": "The summary of the event."
+            }
+          },
+          "required": [
+            "summary"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar_events_for_day",
+        "description": "Use this tool to get the calendar events for the day.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            },
+            "date": {
+              "type": "string",
+              "description": "The date to get calendar events for."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar_events_for_range",
+        "description": "Use this tool to get the calendar events for the day.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            },
+            "startDate": {
+              "type": "string",
+              "description": "The start date to find calendar events for."
+            },
+            "endDate": {
+              "type": "string",
+              "description": "The end date to find calendar events for."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendars",
+        "description": "Use this tool to get a list of the available calendars",
+        "parameters": {
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar",
+        "description": "Get the calendar with the supplied calendar id.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "calendarId": {
+              "type": "string",
+              "description": "The calendar id to get events for. Optional."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_calendar_events_for_range",
+        "description": "Use this function to read emails from the user's already set up email account, for example when asked something like 'Who sent that last email?', or 'When did I get that email from Google'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "account": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "add_calendar_event",
+        "description": "Use this function to add a new event to your Google Calendar",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "A description of the calendar event to create"
+            },
+            "location": {
+              "type": "string",
+              "description": "The location that the calendar event is to take place. This should be the address, or GPS coordinates if the address can't be found."
+            },
+            "startDate": {
+              "type": "string",
+              "description": "The start date and time of the calendar event to create. This value should be formatted in DateTime format 'yyyy-MM-dd HH:mm:ss'"
+            },
+            "endDate": {
+              "type": "string",
+              "description": "The end date and time of the calendar event to create. This value should be formatted in DateTime format 'yyyy-MM-dd HH:mm:ss'"
+            },
+            "reminders": {
+              "type": "array",
+              "description": "Reminders for the event",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "description": "Method of reminder (e.g., 'email', 'popup')",
+                    "enum": ["email", "popup"]
+                  },
+                  "minutes": {
+                    "type": "integer",
+                    "description": "Minutes before the event when the reminder should trigger"
+                  }
+                },
+                "required": [
+                  "method",
+                  "minutes"
+                ]
+              }
+            },
+            "attendees": {
+              "type": "array",
+              "description": "The people attending the event",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "The email of the attendee"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "The name of the attendee"
+                  },
+                  "optional": {
+                    "type": "boolean",
+                    "description": "Is this person's attendance optional (true) or required (false). The default is true."
+                  }
+                },
+                "required": [
+                  "email",
+                  "name"
+                ]
+              }
+            }
+          },
+          "required": [
+            "description",
+            "startDate",
+            "endDate"
+          ]
+        }
+      }
+    }
+  ],
+  "credentials": {
+    "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
+    "googleUser": "your-google-email-address"
+  },
+  "localApiUrl": "http://127.0.0.1:58006/authorize/"
+}
