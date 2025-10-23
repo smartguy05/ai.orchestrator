@@ -1,0 +1,130 @@
+{
+  "name": "Ai.Orchestrator.Plugins.Email",
+  "description": "Email Plugin",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_email",
+        "description": "Use this function to read emails from the user's already set up email account, for example when asked something like 'Who sent that last email?', or 'When did I get that email from Google'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "account": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "searchSubject": {
+              "type": "string",
+              "description": "The subject of the email to search for. This is optional."
+            },
+            "messageId": {
+              "type": "string",
+              "description": "The message Id of the email to retrieve"
+            },
+            "unreadOnly": {
+              "type": "boolean",
+              "description": "If true will only return unread emails. Default false."
+            },
+            "sender": {
+              "type": "string",
+              "description": "The email address of the person that sent the email you are looking for."
+            },
+            "subject": {
+              "type": "string",
+              "description": "The subject of the email you are looking for."
+            },
+            "to": {
+              "type": "string",
+              "description": "The To address of the email you are looking for."
+            },
+            "emailsSentAfter": {
+              "type": "string",
+              "description": "A Datetime parameter for the start date of emails to search for. This will return emails recieved after this datetime."
+            },
+            "emailsSentBefore": {
+              "type": "string",
+              "description": "A Datetime parameter for the end date of emails to search for. This will return emails recieved before this datetime."
+            },
+            "maxReturnedEmails": {
+              "type": "number",
+              "description": "The maximum number of emails to return at a time when searching for emails. The default is 10."
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "send_email",
+        "description": "Use this function to send emails from the user's already set up email account. Always format the email body using HTML for attractive styling, including appropriate use of paragraphs, headings, bold text, lists, and other HTML tags to improve readability and visual appeal. Use this tool when asked something like 'Send an email to mom telling her I will be late'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "account": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "subject": {
+              "type": "string",
+              "description": "The subject of the email to send."
+            },
+            "body": {
+              "type": "string",
+              "description": "The HTML formatted body of the email to send. This should be well-structured and styled using HTML tags like <p>, <h1>, <strong>, <ul>, <ol>, etc."
+            },
+            "recipientName": {
+              "type": "string",
+              "description": "The name of the person recieving the email."
+            },
+            "to": {
+              "type": "string",
+              "description": "The email address to send the email to."
+            }
+          },
+          "required": ["subject", "body", "to"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "delete_email",
+        "description": "Use this function to delete emails from the user's already set up email account, for example when asked something like 'delete that email', or 'delete my last email'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "account": {
+              "type": "string",
+              "description": "The email account you want to access. This is optional, if not supplied the default account will be used."
+            },
+            "messageId": {
+              "type": "string",
+              "description": "The message Id of the email message to delete"
+            }
+          },
+          "required": [
+            "messageId"
+          ]
+        }
+      }
+    }
+  ],
+  "emailAccounts": [
+    {
+      "name": "Test",
+      "displayName": "Test User",
+      "email": "test@gmail.com",
+      "default": true,
+      "imap": "imap.gmail.com",
+      "imapPort": 993,
+      "smtp": "smtp.gmail.com",
+      "smtpPort": 465,
+      "username": "test@gmail.com",
+      "password": "app-password",
+      "useSsl": true
+    }
+  ]
+}
