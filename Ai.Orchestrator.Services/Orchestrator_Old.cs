@@ -1,43 +1,31 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
-using Ai.Orchestrator.Models.Entities;
 using Ai.Orchestrator.Models.Interfaces;
 using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator.Services;
 
-/// <summary>
-/// Per-agent orchestrator
-/// Coordinates plugin execution and request processing for a specific agent
-/// </summary>
-public class Orchestrator : IOrchestrator
+public class Orchestrator: IOrchestrator
 {
-    private readonly Agent _agent;
     private readonly IPluginService _pluginService;
-    private ILoggingService _logger;
+    private readonly ILoggingService _logger;
 
-    public Orchestrator(Agent agent, IPluginService pluginService)
+    public Orchestrator(
+        IPluginService pluginService,
+        ILoggingService logger
+        )
     {
-        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
-        _pluginService = pluginService ?? throw new ArgumentNullException(nameof(pluginService));
+        _logger = logger;
+        _pluginService = pluginService;
         MessageCache.Init();
-    }
-
-    /// <summary>
-    /// Initialize with logging service after it's created
-    /// Called by AgentServiceManager after all services are constructed
-    /// </summary>
-    public void Initialize(ILoggingService logger)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public Task<Dictionary<string, IEnumerable<string>>> GetPluginContracts()
     {
         return Task.Run(() => _pluginService.GetPluginContracts());
     }
-
+    
     public async Task<object> ProcessRequest(OrchestratorRequest request)
     {
         request.ServiceFunctions ??= new Dictionary<string, IEnumerable<string>>();
@@ -52,7 +40,7 @@ public class Orchestrator : IOrchestrator
             request.ServiceFunctions = serviceFunctions;
         }
         var response = await _pluginService.RunPlugin(request);
-
+        
         await _logger.Log(LogLevel.Trace, "Orchestrator ProcessRequest");
         if (response is OrchestratorRequest newRequest)
         {
@@ -62,13 +50,13 @@ public class Orchestrator : IOrchestrator
             };
             await _logger.Log(LogLevel.Trace, JsonSerializer.Serialize(newRequest.Messages, options));
             return AddRequestData(await ProcessRequest(newRequest), request);
-        }
-
+        } 
+        
         if (response is IEnumerable<OrchestratorRequest> requestChain)
         {
             return AddRequestData(await ProcessRequestChain(requestChain), request);
         }
-
+        
         return response;
     }
 
@@ -99,7 +87,7 @@ public class Orchestrator : IOrchestrator
             var serviceRequestJson = JsonSerializer.Deserialize<JsonElement>(serviceRequestString);
             if (serviceRequestJson.TryGetProperty("requestingService", out var service))
             {
-                requestingService = service.GetString();
+                requestingService = service.GetString();    
             }
 
             if (serviceRequestJson.TryGetProperty("conversationId", out var convoId))
@@ -107,7 +95,7 @@ public class Orchestrator : IOrchestrator
                 conversationId = convoId.GetString();
             }
         }
-
+        
         var processedMessages = messages.ToList();
         var options = new JsonSerializerOptions
         {
@@ -120,11 +108,11 @@ public class Orchestrator : IOrchestrator
             var newRequest = requestList[i];
             newRequest.ToolCallId = null; // null so we are returned the actual object instead of another Orchestrator Request
             var toolCall = messages.Last().ToolCalls[i];
-
+            
             // todo: multi-thread
             // process each item
             var result = await ProcessRequest(newRequest);
-
+            
             // add new tool message after
             var toolResponseMessage = new ChatMessageHistory
             {
@@ -135,10 +123,10 @@ public class Orchestrator : IOrchestrator
             processedMessages.Add(toolResponseMessage);
             lastToolCallId = toolCall.Id;
         }
-
+        
         // create single return OrchestratorRequest and return
         var last = requestList.Last();
-
+        
         // correct cached messages
         await MessageCache.SaveCachedMessages(conversationId, processedMessages);
         return await ProcessRequest(new OrchestratorRequest
@@ -150,7 +138,7 @@ public class Orchestrator : IOrchestrator
             Messages = processedMessages
         });
     }
-
+    
     private object AddRequestData(object request, OrchestratorRequest orchestratorRequest)
     {
         _logger.Log(LogLevel.Trace, "AddRequestData Messages").ConfigureAwait(false);

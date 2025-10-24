@@ -1,50 +1,31 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Configuration;
-using Ai.Orchestrator.Models.Entities;
 using Ai.Orchestrator.Models.Interfaces;
 using StackExchange.Redis;
 
 namespace Ai.Orchestrator.Services;
 
-/// <summary>
-/// Per-agent task scheduler
-/// Manages scheduled and recurring tasks for a specific agent
-/// </summary>
-public class TaskScheduler : ITaskScheduler
+public class TaskScheduler: ITaskScheduler
 {
-    private readonly Agent _agent;
-    private readonly IConfig _config;
-    private static string _redisConversationSubject = "scheduled_task";
+    private readonly IOrchestrator _orchestrator;
+    private readonly ILoggingService _logger;
+    private static string _redisConversationSubject;
     private static ConnectionMultiplexer _redisConnection;
 
-    // Injected dependencies
-    private IOrchestrator _orchestrator;
-    private ILoggingService _logger;
-
-    public TaskScheduler(Agent agent, IConfig config)
+    public TaskScheduler(IOrchestrator orchestrator, ILoggingService logger)
     {
-        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
-
-        if (_redisConnection is null)
+        _logger = logger;
+        _orchestrator = orchestrator;
+        if (_redisConnection is null || _redisConversationSubject is null)
         {
-            _redisConnection = ConnectionMultiplexer.Connect(_config.RedisConnectionString, x => x.AllowAdmin = true);
+            var config = new Config();
+            _redisConversationSubject = "scheduled_task";
+            _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString, x=> x.AllowAdmin = true);   
         }
-    }
-
-    /// <summary>
-    /// Initialize with dependent services after they are created
-    /// Called by AgentServiceManager after all services are constructed
-    /// </summary>
-    public void Initialize(IOrchestrator orchestrator, ILoggingService logger)
-    {
-        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
         StartListeningForExpirationEvents();
     }
-
+    
     public async Task AddScheduledTask(ScheduledTask task)
     {
         if (task == null || string.IsNullOrEmpty(task.Name))
@@ -53,8 +34,7 @@ public class TaskScheduler : ITaskScheduler
         }
 
         var database = _redisConnection.GetDatabase();
-        // Include agent ID in redis key to separate tasks per agent
-        var redisKey = $"{_redisConversationSubject}_{_agent.Id}_{task.Name}";
+        var redisKey = $"{_redisConversationSubject}{task.Name}";
         var taskJson = JsonSerializer.Serialize(task);
         var backupKey = $"{redisKey}_backup";
 
@@ -85,39 +65,30 @@ public class TaskScheduler : ITaskScheduler
 
         await _logger.LogInformation($"Task {task.Name} added to Redis with key {redisKey} and expiration {task.Expiration}.");
     }
-
+    
     private void StartListeningForExpirationEvents()
     {
         var subscriber = _redisConnection.GetSubscriber();
-
+        
         // Subscribe to keyspace notifications for expired events
-        // Filter to only handle tasks for this agent
-        subscriber.Subscribe("__keyevent@0__:expired", async (channel, key) =>
+        subscriber.Subscribe("__keyevent@0__:expired", async (channel, key) => 
         {
             var keyString = key.ToString();
-
-            // Only process keys with our prefix and agent ID
-            var agentPrefix = $"{_redisConversationSubject}_{_agent.Id}_";
-            if (keyString.StartsWith(agentPrefix))
+            
+            // Only process keys with our prefix
+            if (keyString.StartsWith(_redisConversationSubject))
             {
                 await HandleExpiredTask(keyString);
             }
         });
-
+        
         // Ensure keyspace notifications are enabled for expired events
-        try
-        {
-            var server = _redisConnection.GetServer(_redisConnection.GetEndPoints().First());
-            server.ConfigSet("notify-keyspace-events", "Ex");
-
-            _logger.LogInformation($"Agent '{_agent.Name}' started listening for Redis expiration events.").ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Failed to configure Redis keyspace notifications for agent '{_agent.Name}': {ex.Message}");
-        }
+        var server = _redisConnection.GetServer(_redisConnection.GetEndPoints().First());
+        server.ConfigSet("notify-keyspace-events", "Ex");
+        
+        _logger.LogInformation("Started listening for Redis expiration events.").ConfigureAwait(false);
     }
-
+    
     private async Task HandleExpiredTask(string key)
     {
         try
@@ -127,13 +98,13 @@ public class TaskScheduler : ITaskScheduler
             var database = _redisConnection.GetDatabase();
             var backupKey = $"{key}_backup";
             var taskJson = await database.StringGetAsync(backupKey);
-
+            
             if (taskJson.IsNullOrEmpty)
             {
                 await _logger.LogWarning($"No backup found for expired task: {key}");
                 return;
             }
-
+            
             // Parse the task
             var task = JsonSerializer.Deserialize<ScheduledTask>(taskJson);
             if (task == null)
@@ -168,15 +139,15 @@ public class TaskScheduler : ITaskScheduler
                     await _logger.LogError($"[TaskScheduler.HandleExpiredTask] Failed to parse ServiceRequest string into JsonDocument: {ex.Message}. Leaving ServiceRequest as string.");
                 }
             }
-
+            
             await _logger.LogInformation($"Processing expired task: {task.Name}");
-
+            
             // Process the request
             if (task.OrchestratorRequest != null)
             {
                 await _orchestrator.ProcessRequest(task.OrchestratorRequest);
                 await _logger.LogInformation($"Task {task.Name} processed successfully.");
-
+                
                 // If recurring, schedule the next occurrence
                 if (task.IsRecurring)
                 {
@@ -188,12 +159,12 @@ public class TaskScheduler : ITaskScheduler
                         Expiration = nextExecution.ToShortDateString(),
                         IsRecurring = true
                     };
-
+                        
                     await AddScheduledTask(newTask);
                     await _logger.LogInformation($"Recurring task {task.Name} rescheduled for {newTask.Expiration}");
                 }
             }
-
+            
             // Clean up the backup
             await database.KeyDeleteAsync(backupKey);
         }

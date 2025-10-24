@@ -66,8 +66,10 @@ public class AgentServiceManager
             var taskScheduler = CreateTaskScheduler(agent);
             var orchestrator = CreateOrchestrator(agent, pluginService);
 
-            // Initialize NotificationService with dependent services (circular dependency resolution)
+            // Initialize services with circular dependencies (after all are created)
+            orchestrator.Initialize(loggingService);
             notificationService.Initialize(loggingService, orchestrator, pluginService);
+            taskScheduler.Initialize(orchestrator, loggingService);
 
             var container = new AgentServiceContainer
             {
@@ -181,7 +183,8 @@ public class AgentServiceManager
     private ITaskScheduler CreateTaskScheduler(Agent agent)
     {
         // Create per-agent task scheduler
-        return new TaskScheduler(agent);
+        var config = _serviceProvider.GetRequiredService<IConfig>();
+        return new TaskScheduler(agent, config);
     }
 
     private IOrchestrator CreateOrchestrator(Agent agent, IPluginService pluginService)
