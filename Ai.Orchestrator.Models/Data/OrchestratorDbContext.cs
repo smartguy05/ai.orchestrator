@@ -232,6 +232,21 @@ public class OrchestratorDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue(true);
 
+            entity.Property(e => e.ActivePlugins)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.ConfirmationPlugin)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.ConfirmationExpirationMinutes)
+                .HasDefaultValue(30);
+
+            entity.Property(e => e.NotificationTimeoutHours)
+                .HasDefaultValue(24);
+
+            entity.Property(e => e.LoggingPlugins)
+                .HasMaxLength(1000);
+
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
 

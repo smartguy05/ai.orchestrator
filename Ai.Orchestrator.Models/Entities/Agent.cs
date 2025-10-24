@@ -62,6 +62,31 @@ public class Agent
     public bool ToolsEnabled { get; set; } = true;
 
     /// <summary>
+    /// Comma-separated list of active plugin names for this agent
+    /// </summary>
+    public string ActivePlugins { get; set; }
+
+    /// <summary>
+    /// Plugin to use for confirmation requests
+    /// </summary>
+    public string ConfirmationPlugin { get; set; }
+
+    /// <summary>
+    /// Confirmation expiration time in minutes
+    /// </summary>
+    public int ConfirmationExpirationMinutes { get; set; } = 30;
+
+    /// <summary>
+    /// Notification timeout in hours
+    /// </summary>
+    public int NotificationTimeoutHours { get; set; } = 24;
+
+    /// <summary>
+    /// Comma-separated list of logging plugin names for this agent
+    /// </summary>
+    public string LoggingPlugins { get; set; }
+
+    /// <summary>
     /// Creation timestamp
     /// </summary>
     public DateTime CreatedAt { get; set; }

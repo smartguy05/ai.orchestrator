@@ -1,7 +1,5 @@
 using Ai.Orchestrator.Middleware;
 using Ai.Orchestrator.Models.Interfaces;
-using Ai.Orchestrator.Services;
-using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator;
 
@@ -87,21 +85,6 @@ public class Program
 
         var app = builder.Build();
 
-        var loggingService = app.Services.GetRequiredService<ILoggingService>();
-        await loggingService.Log(LogLevel.Info, "Loading application");
-        await loggingService.Log(LogLevel.Trace, "Logging Service Started");
-        var pluginService = app.Services.GetRequiredService<IPluginService>();
-        await loggingService.Log(LogLevel.Trace, "Plugin Service Started");
-        var taskScheduler = app.Services.GetRequiredService<ITaskScheduler>();
-        await loggingService.Log(LogLevel.Trace, "Task Scheduler Started");
-        var confirmationService = app.Services.GetRequiredService<INotificationService>();
-        await loggingService.Log(LogLevel.Trace, "Confirmation Service Started");
-        
-        ServiceResolver.Initialize(app.Services);
-        
-        await loggingService.Log(LogLevel.Info, "Initializing Plugins");
-        await pluginService.InitializePlugins(loggingService.Log, confirmationService);
-        
         #if DEBUG
         app.UseSwagger()
             .UseSwaggerUI();
@@ -115,28 +98,13 @@ public class Program
 
         app.MapControllers();
 
-        // Seed database with admin user
+        // Seed database with admin user and default roles
         using (var scope = app.Services.CreateScope())
         {
             var seeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeederService>();
-            await loggingService.Log(LogLevel.Info, "Seeding database with admin user");
             await seeder.SeedAsync();
-            await loggingService.Log(LogLevel.Info, "Database seeding completed");
         }
 
-        try
-        {
-            await loggingService.Log(LogLevel.Info, "Starting application");
-            await app.RunAsync();
-        }
-        catch (Exception e)
-        {
-            await loggingService.LogError(e.Message, e);
-        }
-        finally
-        {
-            await loggingService.Log(LogLevel.Info, "Disposing plugins");
-            await pluginService.DisposePlugins();
-        }
+        await app.RunAsync();
     }   
 }

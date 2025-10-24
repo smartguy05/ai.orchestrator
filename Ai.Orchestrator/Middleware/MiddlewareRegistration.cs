@@ -19,14 +19,7 @@ public static class MiddlewareRegistration
 {
     public static IServiceCollection RegisterOrchestratorMiddleware(this IServiceCollection services)
     {
-        // Register existing services
-        services.AddSingleton<IOrchestrator, Services.Orchestrator>();
-        services.AddSingleton<IPluginService, PluginService>();
-        services.AddSingleton<ITaskScheduler, Services.TaskScheduler>();
-        services.AddSingleton<ILoggingService, LoggingService>();
-        services.AddSingleton<INotificationService, NotificationService>();
-
-        // Register configuration
+        // Register configuration (still needed for database connection, JWT, etc.)
         services.AddSingleton<IConfig, Models.Configuration.Config>();
 
         // Create config instance for use throughout middleware registration
