@@ -2,6 +2,7 @@
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Services;
 using Ai.Orchestrator.Services.Agents;
+using Ai.Orchestrator.Services.Auditing;
 using Ai.Orchestrator.Services.Authentication;
 using Ai.Orchestrator.Services.Plugin;
 using Ai.Orchestrator.Services.PluginConfigs;
@@ -39,6 +40,10 @@ public static class MiddlewareRegistration
         services.AddScoped<IAgentConfigurationService, AgentConfigurationService>();
         services.AddScoped<IPluginConfigurationService, PluginConfigurationService>();
         services.AddScoped<IDatabaseSeederService, DatabaseSeederService>();
+        services.AddScoped<IAuditService, AuditService>();
+
+        // Register HttpContextAccessor for audit logging
+        services.AddHttpContextAccessor();
 
         // Configure JWT authentication
         services.AddAuthentication(options =>

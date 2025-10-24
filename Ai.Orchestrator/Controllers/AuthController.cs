@@ -15,11 +15,13 @@ public class AuthController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IJwtService _jwtService;
+    private readonly IAuditService _auditService;
 
-    public AuthController(IUserService userService, IJwtService jwtService)
+    public AuthController(IUserService userService, IJwtService jwtService, IAuditService auditService)
     {
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _jwtService = jwtService ?? throw new ArgumentNullException(nameof(jwtService));
+        _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
     }
 
     /// <summary>
@@ -55,20 +57,53 @@ public class AuthController : ControllerBase
         try
         {
             var user = await _userService.RegisterUserAsync(request);
+
+            // Log successful registration
+            await _auditService.LogSecurityEventAsync(
+                "UserRegistration",
+                user.Id,
+                user.Username,
+                "Success",
+                $"User '{user.Username}' registered with email '{user.Email}'");
+
             return Ok(user);
         }
         catch (InvalidOperationException ex)
         {
+            // Log failed registration
+            await _auditService.LogSecurityEventAsync(
+                "UserRegistration",
+                null,
+                request.Username,
+                "Failure",
+                $"Registration failed: {ex.Message}");
+
             // Duplicate username or email
             return BadRequest(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
+            // Log validation failure
+            await _auditService.LogSecurityEventAsync(
+                "UserRegistration",
+                null,
+                request.Username,
+                "Failure",
+                $"Validation failed: {ex.Message}");
+
             // Validation errors (invalid email, password too short, etc.)
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
+            // Log unexpected error
+            await _auditService.LogSecurityEventAsync(
+                "UserRegistration",
+                null,
+                request.Username,
+                "Failure",
+                $"Unexpected error: {ex.Message}");
+
             // Unexpected errors
             return StatusCode(500, new { message = "An error occurred while registering the user", error = ex.Message });
         }
@@ -118,11 +153,27 @@ public class AuthController : ControllerBase
 
             if (user == null)
             {
+                // Log failed login
+                await _auditService.LogSecurityEventAsync(
+                    "Login",
+                    null,
+                    request.Username,
+                    "Failure",
+                    "Invalid credentials");
+
                 return Unauthorized(new { message = "Invalid credentials" });
             }
 
             var token = _jwtService.GenerateToken(user.Id, user.Username, user.Roles);
             var expiresAt = _jwtService.GetTokenExpiration(token);
+
+            // Log successful login
+            await _auditService.LogSecurityEventAsync(
+                "Login",
+                user.Id,
+                user.Username,
+                "Success",
+                $"User '{user.Username}' logged in successfully");
 
             var response = new LoginResponse
             {
@@ -137,6 +188,14 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
+            // Log unexpected error
+            await _auditService.LogSecurityEventAsync(
+                "Login",
+                null,
+                request.Username,
+                "Failure",
+                $"Unexpected error: {ex.Message}");
+
             // Unexpected errors (JWT generation failure, etc.)
             return StatusCode(500, new { message = "An error occurred during login", error = ex.Message });
         }
@@ -183,21 +242,59 @@ public class AuthController : ControllerBase
     {
         try
         {
+            // Get admin user info from claims
+            var adminUsername = User.Identity?.Name ?? "Unknown";
+            var adminIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var adminId = adminIdClaim != null ? Guid.Parse(adminIdClaim) : (Guid?)null;
+
             await _userService.ResetPasswordAsync(request);
+
+            // Log successful password reset
+            await _auditService.LogSecurityEventAsync(
+                "PasswordReset",
+                request.UserId,
+                adminUsername,
+                "Success",
+                $"Admin '{adminUsername}' reset password for user ID '{request.UserId}'");
+
             return Ok(new { message = "Password reset successfully" });
         }
         catch (InvalidOperationException ex)
         {
+            // Log not found error
+            await _auditService.LogSecurityEventAsync(
+                "PasswordReset",
+                request.UserId,
+                User.Identity?.Name ?? "Unknown",
+                "Failure",
+                $"User not found: {ex.Message}");
+
             // User not found
             return NotFound(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
+            // Log validation error
+            await _auditService.LogSecurityEventAsync(
+                "PasswordReset",
+                request.UserId,
+                User.Identity?.Name ?? "Unknown",
+                "Failure",
+                $"Validation failed: {ex.Message}");
+
             // Password validation errors
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
+            // Log unexpected error
+            await _auditService.LogSecurityEventAsync(
+                "PasswordReset",
+                request.UserId,
+                User.Identity?.Name ?? "Unknown",
+                "Failure",
+                $"Unexpected error: {ex.Message}");
+
             // Unexpected errors
             return StatusCode(500, new { message = "An error occurred while resetting the password", error = ex.Message });
         }
