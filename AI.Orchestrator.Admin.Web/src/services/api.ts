@@ -99,13 +99,13 @@ export const usersApi = {
   delete: (id: string) =>
     api.delete(`/user/${id}`),
 
-  assignRole: (userId: string, roleId: string) =>
+  assignRole: (userId: string, roleId: number) =>
     api.post(`/user/${userId}/roles/${roleId}`),
 
-  removeRole: (userId: string, roleId: string) =>
+  removeRole: (userId: string, roleId: number) =>
     api.delete(`/user/${userId}/roles/${roleId}`),
 
-  getUsersByRole: (roleId: string) =>
+  getUsersByRole: (roleId: number) =>
     api.get<User[]>(`/user/by-role/${roleId}`),
 };
 

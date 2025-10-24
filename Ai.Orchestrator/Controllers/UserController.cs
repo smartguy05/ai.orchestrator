@@ -127,7 +127,7 @@ public class UserController : ControllerBase
     /// Add role to user
     /// </summary>
     [HttpPost("{userId}/roles/{roleId}")]
-    public async Task<IActionResult> AddRoleToUser(Guid userId, Guid roleId)
+    public async Task<IActionResult> AddRoleToUser(Guid userId, int roleId)
     {
         try
         {
@@ -153,7 +153,7 @@ public class UserController : ControllerBase
     /// Remove role from user
     /// </summary>
     [HttpDelete("{userId}/roles/{roleId}")]
-    public async Task<IActionResult> RemoveRoleFromUser(Guid userId, Guid roleId)
+    public async Task<IActionResult> RemoveRoleFromUser(Guid userId, int roleId)
     {
         try
         {
@@ -174,7 +174,7 @@ public class UserController : ControllerBase
     /// Get users by role
     /// </summary>
     [HttpGet("by-role/{roleId}")]
-    public async Task<IActionResult> GetUsersByRole(Guid roleId)
+    public async Task<IActionResult> GetUsersByRole(int roleId)
     {
         try
         {

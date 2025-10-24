@@ -102,14 +102,14 @@ public interface IUserService
     /// </summary>
     /// <param name="userId">User identifier</param>
     /// <param name="roleId">Role identifier</param>
-    Task AddRoleToUserAsync(Guid userId, Guid roleId);
+    Task AddRoleToUserAsync(Guid userId, int roleId);
 
     /// <summary>
     /// Removes a role from a user by role ID
     /// </summary>
     /// <param name="userId">User identifier</param>
     /// <param name="roleId">Role identifier</param>
-    Task RemoveRoleFromUserAsync(Guid userId, Guid roleId);
+    Task RemoveRoleFromUserAsync(Guid userId, int roleId);
 
     /// <summary>
     /// Gets all roles for a user
@@ -117,6 +117,13 @@ public interface IUserService
     /// <param name="userId">User identifier</param>
     /// <returns>List of role names</returns>
     Task<List<string>> GetUserRolesAsync(Guid userId);
+
+    /// <summary>
+    /// Gets all users with a specific role
+    /// </summary>
+    /// <param name="roleId">Role identifier</param>
+    /// <returns>List of user DTOs</returns>
+    Task<List<UserDto>> GetUsersByRoleAsync(int roleId);
 
     /// <summary>
     /// Deletes a user

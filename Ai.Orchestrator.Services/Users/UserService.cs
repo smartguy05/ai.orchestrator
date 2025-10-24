@@ -294,7 +294,7 @@ public class UserService : IUserService
         }
     }
 
-    public async Task AddRoleToUserAsync(Guid userId, Guid roleId)
+    public async Task AddRoleToUserAsync(Guid userId, int roleId)
     {
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
@@ -326,7 +326,7 @@ public class UserService : IUserService
         await _context.SaveChangesAsync();
     }
 
-    public async Task RemoveRoleFromUserAsync(Guid userId, Guid roleId)
+    public async Task RemoveRoleFromUserAsync(Guid userId, int roleId)
     {
         var userRole = await _context.Set<UserRole>()
             .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
@@ -353,6 +353,17 @@ public class UserService : IUserService
         }
 
         return user.UserRoles.Select(ur => ur.Role.Name).ToList();
+    }
+
+    public async Task<List<UserDto>> GetUsersByRoleAsync(int roleId)
+    {
+        var users = await _context.Users
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
+            .Where(u => u.UserRoles.Any(ur => ur.RoleId == roleId))
+            .ToListAsync();
+
+        return users.Select(MapToDto).ToList();
     }
 
     public async Task DeleteUserAsync(Guid userId)
