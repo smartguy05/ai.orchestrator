@@ -1,56 +1,39 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Configuration;
-using Ai.Orchestrator.Models.Entities;
 using Ai.Orchestrator.Models.Interfaces;
 using StackExchange.Redis;
 
 namespace Ai.Orchestrator.Services;
 
-/// <summary>
-/// Per-agent notification service
-/// Uses agent-specific confirmation plugin and timeout settings
-/// </summary>
 public class NotificationService : INotificationService
 {
-    private readonly Agent _agent;
-    private readonly IConfig _config;
-    private static string _redisConversationSubject = "confirmation";
+    private readonly ILoggingService _loggingService;
+    private readonly IOrchestrator _orchestrator;
+    private static string _redisConversationSubject;
     private static ConnectionMultiplexer _redisConnection;
+    private static Config _config = new();
+    private static INotificationPlugin _plugin;
     private Dictionary<Guid, Confirmation> _confirmations = new();
-
-    // These will be injected later after full initialization
-    private ILoggingService _loggingService;
-    private IOrchestrator _orchestrator;
-    private IPluginService _pluginService;
-    private INotificationPlugin _plugin;
-
-    public NotificationService(Agent agent, IConfig config)
+    private readonly IPluginService _pluginService;
+    
+    public NotificationService(IOrchestrator orchestrator, ILoggingService loggingService, IPluginService pluginService)
     {
-        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
-        _config = config ?? throw new ArgumentNullException(nameof(config));
-
-        if (_redisConnection is null)
+        _pluginService = pluginService;
+        _orchestrator = orchestrator;
+        _loggingService = loggingService;
+        if (_redisConnection is null || _redisConversationSubject is null)
         {
-            _redisConnection = ConnectionMultiplexer.Connect(_config.RedisConnectionString, x => x.AllowAdmin = true);
+            var config = new Config();
+            _redisConversationSubject = "confirmation";
+            _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString, x=> x.AllowAdmin = true);
         }
-    }
 
-    /// <summary>
-    /// Initialize with dependent services after they are created
-    /// Called by AgentServiceManager after all services are constructed
-    /// </summary>
-    public void Initialize(ILoggingService loggingService, IOrchestrator orchestrator, IPluginService pluginService)
-    {
-        _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
-        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
-        _pluginService = pluginService ?? throw new ArgumentNullException(nameof(pluginService));
-
-        // Load notification plugin if configured
-        if (!string.IsNullOrEmpty(_agent.ConfirmationPlugin))
+        // Only load plugin if ConfirmationPlugin is configured
+        if (!string.IsNullOrEmpty(_config.ConfirmationPlugin))
         {
-            _plugin = _pluginService.GetPlugin<INotificationPlugin>(_agent.ConfirmationPlugin);
+            _plugin = pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
         }
     }
 
@@ -69,15 +52,15 @@ public class NotificationService : INotificationService
             {
                 Success = true,
                 ConfirmationId = confirmation.Id.ToString()
-            };
+            };    
         }
-
+                    
         return new
         {
             Success = false
         };
     }
-
+    
     public async Task<object> RequestConfirmation(string serviceName, Confirmation confirmation, IPluginServiceRequest serviceRequest)
     {
         if (serviceRequest is null)
@@ -85,7 +68,7 @@ public class NotificationService : INotificationService
             await _loggingService.LogError("RequestConfirmation: serviceRequest is null");
             throw new Exception("Service Request is null");
         }
-
+        
         confirmation.Id ??= Guid.NewGuid();
         serviceRequest.ConfirmationId = confirmation.Id.ToString();
         var request = new OrchestratorRequest
@@ -93,7 +76,7 @@ public class NotificationService : INotificationService
             Service = serviceName,
             ServiceRequest = serviceRequest
         };
-        var confirmationRequest = await ProcessRequestConfirmation(confirmation, request, _agent.ConfirmationExpirationMinutes);
+        var confirmationRequest = await ProcessRequestConfirmation(confirmation, request, _config.ConfirmationExpirationMinutes);
         var isSuccessful = (bool?)confirmationRequest.GetType().GetProperty("Success")?.GetValue(confirmationRequest) ?? false;
         if (isSuccessful)
         {
@@ -101,15 +84,15 @@ public class NotificationService : INotificationService
             {
                 Success = true,
                 ConfirmationId = confirmation.Id.ToString()
-            };
+            };    
         }
-
+                    
         return new
         {
             Success = false
         };
     }
-
+    
     public async Task<object> Confirm(Guid confirmationId, bool confirm)
     {
         // get request
@@ -126,7 +109,7 @@ public class NotificationService : INotificationService
                 Error = errorMessage
             };
         }
-
+        
         var confirmation = _confirmations[confirmationId];
         if (confirmation is null)
         {
@@ -138,7 +121,7 @@ public class NotificationService : INotificationService
                 Error = errorMessage
             };
         }
-
+        
         if (confirmation.Expiration < DateTime.Now)
         {
             await _loggingService.LogInformation($"Confirmation {confirmation.Id} expired!");
@@ -148,7 +131,7 @@ public class NotificationService : INotificationService
                 Message = "Confirmation expired"
             };
         }
-
+        
         try
         {
             if (confirm)
@@ -156,7 +139,7 @@ public class NotificationService : INotificationService
                 var orchestratorRequest = !string.IsNullOrWhiteSpace(requestJson)
                     ? JsonSerializer.Deserialize<OrchestratorRequest>(requestJson)
                     : new OrchestratorRequest();
-
+                
                 if (orchestratorRequest.ServiceRequest is JsonElement serviceRequestElement)
                 {
                     var serviceRequestObject = JsonSerializer.Deserialize<JsonObject>(serviceRequestElement);
@@ -166,7 +149,7 @@ public class NotificationService : INotificationService
                         orchestratorRequest.ServiceRequest = JsonSerializer.Serialize(serviceRequestObject);
                     }
                 }
-
+                
                 return await _orchestrator.ProcessRequest(orchestratorRequest);
             }
         }
@@ -202,32 +185,32 @@ public class NotificationService : INotificationService
         }
         return false;
     }
-
+    
     private async Task<object> ProcessRequestConfirmation(Confirmation confirmation, OrchestratorRequest request, int timeoutInMinutes)
     {
         if (confirmation == null)
         {
             throw new ArgumentException("No confirmation found");
         }
-
+        
         confirmation.Id ??= Guid.NewGuid();
         confirmation.Expiration = DateTime.Now.AddMinutes(timeoutInMinutes);
         _confirmations.TryAdd((Guid)confirmation.Id, confirmation);
-
+        
         var database = _redisConnection.GetDatabase();
         var redisKey = $"{_redisConversationSubject}_{confirmation.Id}";
         var requestJson = JsonSerializer.Serialize(request);
-        var expiration = TimeSpan.FromMinutes(_agent.ConfirmationExpirationMinutes);
-
+        var expiration = TimeSpan.FromMinutes(_config.ConfirmationExpirationMinutes);
+        
         await database.StringSetAsync(redisKey, requestJson, expiration);
         return await SendConfirmation(confirmation, request);
     }
 
     private async Task<object> SendConfirmation(Confirmation confirmation, OrchestratorRequest request)
     {
-        if (_plugin is null && !string.IsNullOrEmpty(_agent.ConfirmationPlugin))
+        if (_plugin is null)
         {
-            _plugin = _pluginService.GetPlugin<INotificationPlugin>(_agent.ConfirmationPlugin);
+            _plugin = _pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
         }
 
         if (_plugin is not null)

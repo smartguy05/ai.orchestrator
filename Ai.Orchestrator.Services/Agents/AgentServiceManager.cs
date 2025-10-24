@@ -59,16 +59,25 @@ public class AgentServiceManager
                 _agentServices.Remove(agent.Id);
             }
 
-            // Create new service container
+            // Create new service container - order matters due to dependencies
+            var loggingService = CreateLoggingService(agent);
+            var notificationService = CreateNotificationService(agent);
+            var pluginService = CreatePluginService(agent);
+            var taskScheduler = CreateTaskScheduler(agent);
+            var orchestrator = CreateOrchestrator(agent, pluginService);
+
+            // Initialize NotificationService with dependent services (circular dependency resolution)
+            notificationService.Initialize(loggingService, orchestrator, pluginService);
+
             var container = new AgentServiceContainer
             {
                 AgentId = agent.Id,
                 AgentName = agent.Name,
-                LoggingService = CreateLoggingService(agent),
-                NotificationService = CreateNotificationService(agent),
-                PluginService = CreatePluginService(agent),
-                TaskScheduler = CreateTaskScheduler(agent),
-                Orchestrator = CreateOrchestrator(agent)
+                LoggingService = loggingService,
+                NotificationService = notificationService,
+                PluginService = pluginService,
+                TaskScheduler = taskScheduler,
+                Orchestrator = orchestrator
             };
 
             _agentServices[agent.Id] = container;
@@ -151,13 +160,15 @@ public class AgentServiceManager
     private ILoggingService CreateLoggingService(Agent agent)
     {
         // Create per-agent logging service with agent-specific logging plugins
-        return new LoggingService(agent);
+        var config = _serviceProvider.GetRequiredService<IConfig>();
+        return new LoggingService(agent, config);
     }
 
     private INotificationService CreateNotificationService(Agent agent)
     {
         // Create per-agent notification service with agent-specific confirmation plugin
-        return new NotificationService(agent);
+        var config = _serviceProvider.GetRequiredService<IConfig>();
+        return new NotificationService(agent, config);
     }
 
     private IPluginService CreatePluginService(Agent agent)
@@ -173,10 +184,9 @@ public class AgentServiceManager
         return new TaskScheduler(agent);
     }
 
-    private IOrchestrator CreateOrchestrator(Agent agent)
+    private IOrchestrator CreateOrchestrator(Agent agent, IPluginService pluginService)
     {
         // Create per-agent orchestrator
-        var services = _agentServices[agent.Id];
-        return new Orchestrator(agent, services.PluginService);
+        return new Orchestrator(agent, pluginService);
     }
 }
