@@ -71,6 +71,13 @@ public static class MiddlewareRegistration
             options.AddPolicy("ReadOnly", policy => policy.RequireRole("Admin", "AgentManager", "User", "ReadOnly"));
         });
 
+        // Configure health checks
+        services.AddHealthChecks()
+            .AddDbContextCheck<OrchestratorDbContext>(
+                name: "database",
+                failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,
+                tags: new[] { "db", "postgresql", "ready" });
+
         return services;
     }
 }
