@@ -1,38 +1,58 @@
-﻿using System.Dynamic;
+using System.Dynamic;
 using System.Reflection;
 using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Configuration;
+using Ai.Orchestrator.Models.Data;
+using Ai.Orchestrator.Models.Entities;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using LogLevel = Ai.Orchestrator.Models.Enums.LogLevel;
 
 namespace Ai.Orchestrator.Services.Plugin;
 
-public class PluginService : IPluginService
+/// <summary>
+/// Per-agent plugin service
+/// Loads and manages plugins specific to an agent from database configuration
+/// </summary>
+public class PluginService_New : IPluginService
 {
-    private readonly Config _config = new();
-    private static LogDelegate _logger;
-    private static INotificationService _notificationService;
-    private static readonly Dictionary<string, Assembly> _assemblyCache = new (StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<string, PluginLoadContext> _contextCache = new (StringComparer.OrdinalIgnoreCase);
-    private static readonly Dictionary<string, List<object>> _pluginInstanceCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Agent _agent;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IConfig _config;
+    private LogDelegate _logger;
+    private INotificationService _notificationService;
+
+    // Per-agent caches (non-static)
+    private readonly Dictionary<string, Assembly> _assemblyCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PluginLoadContext> _contextCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<object>> _pluginInstanceCache = new(StringComparer.OrdinalIgnoreCase);
+
+    public PluginService_New(Agent agent, IServiceProvider serviceProvider)
+    {
+        _agent = agent ?? throw new ArgumentNullException(nameof(agent));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _config = serviceProvider.GetRequiredService<IConfig>();
+    }
 
     public List<ToolCall> GetTools()
     {
-        var plugins = _config.ActivePlugins.Split(",");
-        if (!plugins.Any())
+        var pluginConfigs = GetAgentPluginConfigurationsFromDb();
+
+        if (!pluginConfigs.Any())
         {
-            throw new Exception("Unable to find any plugins");
+            return new List<ToolCall>();
         }
 
         var configs = new List<ToolCall>();
-        foreach (var plugin in plugins)
+
+        foreach (var pluginConfig in pluginConfigs)
         {
-            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-            if (config is not null)
+            if (!string.IsNullOrWhiteSpace(pluginConfig.ConfigurationJson))
             {
-                using JsonDocument doc = JsonDocument.Parse(config);
+                using JsonDocument doc = JsonDocument.Parse(pluginConfig.ConfigurationJson);
                 var element = doc.RootElement;
                 var expando = element.Deserialize<ExpandoObject>();
                 var dictionary = (IDictionary<string, object>)expando;
@@ -55,6 +75,203 @@ public class PluginService : IPluginService
             }
         }
 
+        // Add schedule_task tool
+        configs.Add(CreateScheduleTaskTool());
+
+        return configs;
+    }
+
+    public Dictionary<string, IEnumerable<string>> GetPluginContracts()
+    {
+        var pluginConfigs = GetAgentPluginConfigurationsFromDb();
+
+        if (!pluginConfigs.Any())
+        {
+            return new Dictionary<string, IEnumerable<string>>();
+        }
+
+        var contracts = new Dictionary<string, IEnumerable<string>>();
+
+        foreach (var pluginConfig in pluginConfigs)
+        {
+            if (!string.IsNullOrWhiteSpace(pluginConfig.ConfigurationJson))
+            {
+                using JsonDocument doc = JsonDocument.Parse(pluginConfig.ConfigurationJson);
+                var element = doc.RootElement;
+                var expando = element.Deserialize<ExpandoObject>();
+                var dictionary = (IDictionary<string, object>)expando;
+
+                if (dictionary.TryGetValue("tools", out var tools))
+                {
+                    var toolCalls = ((JsonElement)tools)
+                        .EnumerateArray()
+                        .Select(item => JsonSerializer.Deserialize<ToolCall>(item, new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        }))
+                        .ToList();
+                    var functions = toolCalls.Select(s => s.Function.Name).ToList();
+                    contracts.Add(pluginConfig.PluginName, functions);
+                }
+            }
+        }
+
+        return contracts;
+    }
+
+    public async Task<object> RunPlugin(OrchestratorRequest request)
+    {
+        var pluginConfigs = GetAgentPluginConfigurationsFromDb();
+
+        if (!pluginConfigs.Any())
+        {
+            throw new Exception("No plugins configured for this agent");
+        }
+
+        // Find plugin configuration by service name
+        var pluginConfig = pluginConfigs.FirstOrDefault(pc =>
+            string.Equals(pc.PluginName, request.Service, StringComparison.InvariantCultureIgnoreCase));
+
+        if (pluginConfig == null)
+        {
+            await _logger(LogLevel.Warning, $"No plugin found with the name {request.Service}");
+            throw new Exception($"Invalid plugin specified: {request.Service}");
+        }
+
+        var command = GetPlugin<ICommand>(pluginConfig.PluginName);
+        if (command != null)
+        {
+            return await command.Execute(request, pluginConfig.ConfigurationJson, GetTools(), _logger, _notificationService);
+        }
+
+        await _logger(LogLevel.Warning, $"No command implementation found for plugin {request.Service}");
+        throw new Exception("Invalid plugin specified!");
+    }
+
+    public async Task InitializePlugins(LogDelegate logger, INotificationService notificationService)
+    {
+        _notificationService = notificationService;
+        _logger = logger;
+
+        var pluginConfigs = GetAgentPluginConfigurationsFromDb();
+
+        if (!pluginConfigs.Any())
+        {
+            await _logger(LogLevel.Info, $"No plugins configured for agent '{_agent.Name}'");
+            return;
+        }
+
+        foreach (var pluginConfig in pluginConfigs)
+        {
+            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{pluginConfig.PluginName}.dll");
+            await logger(LogLevel.Trace, $"-- Plugin {pluginConfig.PluginName} loaded for agent '{_agent.Name}' --");
+
+            if (!string.IsNullOrWhiteSpace(pluginConfig.ConfigurationJson))
+            {
+                await logger(LogLevel.Trace, $"-- Plugin {pluginConfig.PluginName} config loaded --");
+            }
+
+            var instances = CreatePluginInstances(pluginAssembly).ToList();
+
+            if (!_pluginInstanceCache.ContainsKey(pluginConfig.PluginName))
+            {
+                _pluginInstanceCache.Add(pluginConfig.PluginName, instances);
+            }
+
+            var tasks = new List<Task<object>>();
+            foreach (var instance in instances)
+            {
+                if (instance is ICommand command)
+                {
+                    tasks.Add(command.Initialize(pluginConfig.ConfigurationJson, logger, notificationService));
+                    await logger(LogLevel.Trace, $"-- Command {command.Name} initialized for agent '{_agent.Name}' --");
+                }
+            }
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception e)
+            {
+                await logger(LogLevel.Error, $"Error initializing plugin {pluginConfig.PluginName}: {e.Message}");
+                throw;
+            }
+        }
+    }
+
+    public T GetPlugin<T>(string pluginName) where T : class
+    {
+        if (_pluginInstanceCache.TryGetValue(pluginName, out var instances))
+        {
+            return instances.OfType<T>().FirstOrDefault();
+        }
+
+        _logger?.Invoke(LogLevel.Error, $"Attempted to get plugin '{pluginName}' before it was initialized.", null).Wait();
+        return null;
+    }
+
+    public Task DisposePlugins()
+    {
+        foreach (var context in _contextCache.Values)
+        {
+            context.Unload();
+        }
+        _assemblyCache.Clear();
+        _contextCache.Clear();
+        _pluginInstanceCache.Clear();
+        return Task.CompletedTask;
+    }
+
+    // Private helper methods
+
+    private List<PluginConfiguration> GetAgentPluginConfigurationsFromDb()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
+
+        return context.PluginConfigurations
+            .Where(pc => pc.AgentId == _agent.Id && pc.IsActive)
+            .ToList();
+    }
+
+    private IEnumerable<object> CreatePluginInstances(Assembly assembly)
+    {
+        var instances = new List<object>();
+        foreach (var type in assembly.GetExportedTypes())
+        {
+            if (type.IsClass && !type.IsAbstract && (typeof(ICommand).IsAssignableFrom(type) || typeof(INotificationPlugin).IsAssignableFrom(type)))
+            {
+                if (!instances.Any(i => i.GetType() == type))
+                {
+                    instances.Add(Activator.CreateInstance(type));
+                }
+            }
+        }
+        return instances;
+    }
+
+    private Assembly LoadPlugin(string relativePath)
+    {
+        var pluginName = Path.GetFileNameWithoutExtension(relativePath);
+        if (_assemblyCache.TryGetValue(pluginName, out var cachedAssembly))
+        {
+            return cachedAssembly;
+        }
+
+        var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath));
+        _logger(LogLevel.Trace, $"Loading commands from: {pluginLocation}").ConfigureAwait(false);
+        var loadContext = new PluginLoadContext(pluginLocation);
+        var assembly = loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
+
+        _contextCache[pluginName] = loadContext;
+        _assemblyCache[pluginName] = assembly;
+
+        return assembly;
+    }
+
+    private ToolCall CreateScheduleTaskTool()
+    {
         var properties = new Dictionary<string, ToolProperty>();
         properties.Add("description", new ToolProperty
         {
@@ -81,7 +298,8 @@ public class PluginService : IPluginService
             Type = "boolean",
             Description = "Should this be a recurring scheduled task. If yes, true, if no, false."
         });
-        configs.Add(new ToolCall
+
+        return new ToolCall
         {
             Function = new ToolFunction
             {
@@ -98,223 +316,6 @@ public class PluginService : IPluginService
                     }
                 }
             }
-        });
-
-        return configs;
-    }
-    
-    public Dictionary<string, IEnumerable<string>> GetPluginContracts()
-    {
-        var plugins = _config.ActivePlugins.Split(",");
-        if (!plugins.Any())
-        {
-            throw new Exception("Unable to find any plugins");
-        }
-
-        var configs = new Dictionary<string, IEnumerable<string>>();
-        foreach (var plugin in plugins)
-        {
-            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-            if (config is not null)
-            {
-                using JsonDocument doc = JsonDocument.Parse(config);
-                var element = doc.RootElement;
-                var expando = element.Deserialize<ExpandoObject>();
-                var dictionary = (IDictionary<string, object>)expando;
-
-                if (dictionary.TryGetValue("tools", out var tools))
-                {
-                    var toolCalls = ((JsonElement)tools)
-                        .EnumerateArray()
-                        .Select(item => JsonSerializer.Deserialize<ToolCall>(item, new JsonSerializerOptions 
-                        { 
-                            PropertyNameCaseInsensitive = true 
-                        }))
-                        .ToList();
-                    var functions = toolCalls.Select(s => s.Function.Name).ToList();
-                    configs.Add(plugin, functions);
-                }
-            }
-        }
-
-        return configs;
-    }
-
-    public async Task<object> RunPlugin(OrchestratorRequest request)
-    {
-        var plugins = _config.ActivePlugins.Split(",");
-        if (!plugins.Any())
-        {
-            throw new Exception("Unable to find specified plugin");
-        }
-        var plugin = plugins.FirstOrDefault(f =>
-            string.Equals(f, request.Service, StringComparison.InvariantCultureIgnoreCase));
-        if (plugin != null)
-        {
-            var command = GetPlugin<ICommand>(plugin);
-            if (command != null)
-            {
-                var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-                return await command.Execute(request, config, GetTools(), _logger, _notificationService);
-            }
-        }
-        await _logger(LogLevel.Warning, $"No plugin found with the name {request.Service}");
-        throw new Exception("Invalid plugin specified!");
-    }
-    
-    public async Task InitializePlugins(LogDelegate logger, INotificationService notificationService)
-    {
-        _notificationService = notificationService;
-        _logger = logger;
-
-        // Handle empty or null ActivePlugins configuration
-        if (string.IsNullOrWhiteSpace(_config.ActivePlugins))
-        {
-            await _logger(LogLevel.Info, "No active plugins configured");
-            return;
-        }
-
-        var plugins = _config.ActivePlugins.Split(",", StringSplitOptions.RemoveEmptyEntries);
-        if (!plugins.Any())
-        {
-            throw new Exception("Unable to find specified plugin");
-        }
-
-        foreach (var plugin in plugins)
-        {
-            var pluginAssembly = LoadPlugin($"{_config.PluginDirectory}/{plugin}.dll");
-            await logger(LogLevel.Trace, $"-- Plugin {plugin} Loaded --");
-                
-            var config = LoadConfig($"{_config.ConfigDirectory}/{plugin}.json");
-            if (!string.IsNullOrWhiteSpace(config))
-            {
-                await logger(LogLevel.Trace, $"-- Plugin {plugin} Config Loaded --");
-            }
-            var instances = CreatePluginInstances(pluginAssembly).ToList();
-
-            if (!_pluginInstanceCache.ContainsKey(plugin))
-            {
-                _pluginInstanceCache.Add(plugin, instances);
-            }
-
-            var tasks = new List<Task<object>>();
-            foreach (var instance in instances)
-            {
-                // 3. Only call Initialize if the instance is an ICommand.
-                if (instance is ICommand command)
-                {
-                    tasks.Add(command.Initialize(config, logger, notificationService));
-                    await logger(LogLevel.Trace, $"-- Command {command.Name} Initialized --");
-                }
-            }
-
-            try
-            {
-                await Task.WhenAll(tasks);
-            }
-            catch (Exception e)
-            {
-                await logger(LogLevel.Error, e.Message);
-                throw;
-            }
-        }
-    }
-    
-    public T GetPlugin<T>(string pluginName) where T : class
-    {
-        if (_pluginInstanceCache.TryGetValue(pluginName, out var instances))
-        {
-            return instances.OfType<T>().FirstOrDefault();
-        }
-
-        _logger?.Invoke(LogLevel.Error, $"Attempted to get plugin '{pluginName}' before it was initialized.", null).Wait();
-        return null;
-    }
-    
-    public Task DisposePlugins()
-    {
-        foreach (var context in _contextCache.Values)
-        {
-            context.Unload();
-        }
-        _assemblyCache.Clear();
-        _contextCache.Clear();
-        _pluginInstanceCache.Clear();
-        return Task.CompletedTask;
-    }
-    
-    private static IEnumerable<object> CreatePluginInstances(Assembly assembly)
-    {
-        var instances = new List<object>();
-        foreach (var type in assembly.GetExportedTypes())
-        {
-            // This condition finds any concrete class that implements a known plugin interface.
-            // You can add more interfaces here like || typeof(ILoggingPlugin).IsAssignableFrom(type)
-            if (type.IsClass && !type.IsAbstract && (typeof(ICommand).IsAssignableFrom(type) || typeof(INotificationPlugin).IsAssignableFrom(type)))
-            {
-                // Ensure we only create one instance of a class, even if it implements multiple interfaces.
-                if (!instances.Any(i => i.GetType() == type))
-                {
-                    instances.Add(Activator.CreateInstance(type));
-                }
-            }
-        }
-        return instances;
-    }
-    
-    private static Assembly LoadPlugin(string relativePath)
-    {
-        var pluginName = Path.GetFileNameWithoutExtension(relativePath);
-        if (_assemblyCache.TryGetValue(pluginName, out var cachedAssembly))
-        {
-            return cachedAssembly;
-        }
-        
-        var pluginLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath));
-        _logger( LogLevel.Trace,$"Loading commands from: {pluginLocation}").ConfigureAwait(false);
-        var loadContext = new PluginLoadContext(pluginLocation);
-        var assembly = loadContext.LoadFromAssemblyName(new AssemblyName(Path.GetFileNameWithoutExtension(pluginLocation)));
-        
-        _contextCache[pluginName] = loadContext;
-        _assemblyCache[pluginName] = assembly;
-
-        return assembly;
-    }
-    
-    private static string LoadConfig(string relativePath)
-    {
-        var configLocation = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('\\', Path.DirectorySeparatorChar)));
-        _logger( LogLevel.Trace,$"Loading config from: {configLocation}").ConfigureAwait(false);
-        if (File.Exists(configLocation))
-        {
-            return File.ReadAllText(configLocation);
-        }
-
-        return null;
-    }
-    
-    private static IEnumerable<ICommand> CreateCommands(Assembly assembly)
-    {
-        var count = 0;
-
-        foreach (var type in assembly.GetTypes())
-        {
-            if (typeof(ICommand).IsAssignableFrom(type))
-            {
-                if (Activator.CreateInstance(type) is ICommand result)
-                {
-                    count++;
-                    yield return result;
-                }
-            }
-        }
-
-        if (count == 0)
-        {
-            var availableTypes = string.Join(",", assembly.GetTypes().Select(t => t.FullName));
-            throw new ApplicationException(
-                $"Can't find any type which implements ICommand in {assembly} from {assembly.Location}.\n" +
-                $"Available types: {availableTypes}");
-        }
+        };
     }
 }
