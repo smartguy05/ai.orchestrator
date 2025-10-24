@@ -343,7 +343,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.AddRoleToUserAsync(userId, roleId))
@@ -362,7 +362,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.AddRoleToUserAsync(userId, roleId))
@@ -381,7 +381,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 999; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.AddRoleToUserAsync(userId, roleId))
@@ -400,7 +400,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.AddRoleToUserAsync(userId, roleId))
@@ -419,7 +419,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.AddRoleToUserAsync(userId, roleId))
@@ -442,7 +442,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.RemoveRoleFromUserAsync(userId, roleId))
@@ -461,7 +461,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.RemoveRoleFromUserAsync(userId, roleId))
@@ -480,7 +480,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.RemoveRoleFromUserAsync(userId, roleId))
@@ -499,7 +499,7 @@ public class UserControllerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.RemoveRoleFromUserAsync(userId, roleId))
@@ -521,7 +521,7 @@ public class UserControllerTests
     public async Task GetUsersByRole_ShouldReturnOk_WithUserList()
     {
         // Arrange
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int (Admin role)
         var users = new List<UserDto>
         {
             new UserDto { Id = Guid.NewGuid(), Username = "admin1", Roles = new List<string> { "Admin" } },
@@ -545,7 +545,7 @@ public class UserControllerTests
     public async Task GetUsersByRole_ShouldReturnEmptyList_WhenNoUsersWithRole()
     {
         // Arrange
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.GetUsersByRoleAsync(roleId))
@@ -564,7 +564,7 @@ public class UserControllerTests
     public async Task GetUsersByRole_ShouldReturnInternalServerError_OnException()
     {
         // Arrange
-        var roleId = Guid.NewGuid();
+        var roleId = 1; // Changed from Guid to int
 
         _mockUserService
             .Setup(s => s.GetUsersByRoleAsync(roleId))
