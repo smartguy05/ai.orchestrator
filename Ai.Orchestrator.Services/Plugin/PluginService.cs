@@ -164,13 +164,21 @@ public class PluginService : IPluginService
     
     public async Task InitializePlugins(LogDelegate logger, INotificationService notificationService)
     {
-        var plugins = _config.ActivePlugins.Split(",");
+        _notificationService = notificationService;
+        _logger = logger;
+
+        // Handle empty or null ActivePlugins configuration
+        if (string.IsNullOrWhiteSpace(_config.ActivePlugins))
+        {
+            await _logger(LogLevel.Info, "No active plugins configured");
+            return;
+        }
+
+        var plugins = _config.ActivePlugins.Split(",", StringSplitOptions.RemoveEmptyEntries);
         if (!plugins.Any())
         {
             throw new Exception("Unable to find specified plugin");
         }
-        _notificationService = notificationService;
-        _logger = logger;
 
         foreach (var plugin in plugins)
         {

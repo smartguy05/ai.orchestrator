@@ -23,30 +23,46 @@ public class PluginConfigIntegrationTests : IClassFixture<WebApplicationFactory<
 
     public PluginConfigIntegrationTests(WebApplicationFactory<Program> factory)
     {
+        // Signal that we're in integration test mode - prevents PostgreSQL registration
+        Environment.SetEnvironmentVariable("IS_INTEGRATION_TEST", "true");
+
+        // Set minimal required environment variables for testing
+        Environment.SetEnvironmentVariable("LoggingPluginsString", "");
+        Environment.SetEnvironmentVariable("PluginDirectory", "./plugins");
+        Environment.SetEnvironmentVariable("ConfigDirectory", "./configs");
+        Environment.SetEnvironmentVariable("RedisConnectionString", "localhost:6379");
+        Environment.SetEnvironmentVariable("RedisConversationSubject", "test");
+        Environment.SetEnvironmentVariable("ConfirmationPlugin", "");
+        Environment.SetEnvironmentVariable("ActivePlugins", "");
+        Environment.SetEnvironmentVariable("JwtSecret", "test-secret-key-that-is-long-enough-for-testing-purposes-minimum-32-bytes");
+        Environment.SetEnvironmentVariable("JwtIssuer", "TestIssuer");
+        Environment.SetEnvironmentVariable("JwtAudience", "TestAudience");
+        Environment.SetEnvironmentVariable("JwtExpirationMinutes", "60");
+        Environment.SetEnvironmentVariable("RefreshTokenExpirationDays", "7");
+
+        // Use a unique but consistent database name for this test instance
+        var databaseName = $"PluginConfigIntegrationTestDb_{Guid.NewGuid()}";
+
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureServices(services =>
+            // Register InMemory database BEFORE startup configuration runs
+            builder.ConfigureServices((context, services) =>
             {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<OrchestratorDbContext>));
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
+                // Add InMemory database for testing - this runs before MiddlewareRegistration
+                // so the check in MiddlewareRegistration will see it and skip PostgreSQL
                 services.AddDbContext<OrchestratorDbContext>(options =>
                 {
-                    options.UseInMemoryDatabase($"PluginConfigTestDb_{Guid.NewGuid()}");
+                    options.UseInMemoryDatabase(databaseName);
                 });
-
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
-                db.Database.EnsureCreated();
             });
         });
 
         _client = _factory.CreateClient();
+
+        // Ensure database is created and seeded
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
+        db.Database.EnsureCreated();
     }
 
     #region Create Plugin Configuration Tests

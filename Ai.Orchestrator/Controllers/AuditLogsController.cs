@@ -10,7 +10,7 @@ namespace Ai.Orchestrator.Controllers;
 /// Provides endpoints for security monitoring and compliance reporting
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auditlogs")]
 [Authorize(Policy = "Admin")]
 public class AuditLogsController : ControllerBase
 {
@@ -203,7 +203,7 @@ public class AuditLogsController : ControllerBase
     /// - Compliance reporting
     /// - Security analysis
     /// </remarks>
-    [HttpGet("search/action/{action}")]
+    [HttpGet("search/action/{action?}")]
     [ProducesResponseType(typeof(List<AuditLog>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

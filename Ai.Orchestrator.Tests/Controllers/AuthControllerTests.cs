@@ -2,8 +2,10 @@ using Ai.Orchestrator.Controllers;
 using Ai.Orchestrator.Models.DTOs.Auth;
 using Ai.Orchestrator.Models.DTOs.Users;
 using Ai.Orchestrator.Models.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace Ai.Orchestrator.Tests.Controllers;
 
@@ -15,13 +17,15 @@ public class AuthControllerTests
 {
     private readonly Mock<IUserService> _mockUserService;
     private readonly Mock<IJwtService> _mockJwtService;
+    private readonly Mock<IAuditService> _mockAuditService;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
     {
         _mockUserService = new Mock<IUserService>();
         _mockJwtService = new Mock<IJwtService>();
-        _controller = new AuthController(_mockUserService.Object, _mockJwtService.Object);
+        _mockAuditService = new Mock<IAuditService>();
+        _controller = new AuthController(_mockUserService.Object, _mockJwtService.Object, _mockAuditService.Object);
     }
 
     #region Register Tests
@@ -177,6 +181,14 @@ public class AuthControllerTests
 
         var token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
         var expiresAt = DateTime.UtcNow.AddMinutes(1440);
+        var jwtId = Guid.NewGuid().ToString();
+        var refreshToken = "refresh_token_string";
+
+        // Setup HttpContext for controller
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
 
         _mockUserService
             .Setup(s => s.AuthenticateAsync(request))
@@ -189,6 +201,22 @@ public class AuthControllerTests
         _mockJwtService
             .Setup(s => s.GetTokenExpiration(token))
             .Returns(expiresAt);
+
+        _mockJwtService
+            .Setup(s => s.GetJwtId(token))
+            .Returns(jwtId);
+
+        _mockJwtService
+            .Setup(s => s.GenerateRefreshToken())
+            .Returns(refreshToken);
+
+        _mockJwtService
+            .Setup(s => s.StoreRefreshTokenAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new Ai.Orchestrator.Models.Entities.RefreshToken { Id = Guid.NewGuid() });
+
+        _mockAuditService
+            .Setup(s => s.LogSecurityEventAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _controller.Login(request);
@@ -290,6 +318,14 @@ public class AuthControllerTests
 
         var token = "jwt.token.here";
         var expiresAt = DateTime.UtcNow.AddMinutes(1440);
+        var jwtId = Guid.NewGuid().ToString();
+        var refreshToken = "refresh_token_string";
+
+        // Setup HttpContext for controller
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
 
         _mockUserService
             .Setup(s => s.AuthenticateAsync(request))
@@ -303,6 +339,22 @@ public class AuthControllerTests
         _mockJwtService
             .Setup(s => s.GetTokenExpiration(token))
             .Returns(expiresAt);
+
+        _mockJwtService
+            .Setup(s => s.GetJwtId(token))
+            .Returns(jwtId);
+
+        _mockJwtService
+            .Setup(s => s.GenerateRefreshToken())
+            .Returns(refreshToken);
+
+        _mockJwtService
+            .Setup(s => s.StoreRefreshTokenAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new Ai.Orchestrator.Models.Entities.RefreshToken { Id = Guid.NewGuid() });
+
+        _mockAuditService
+            .Setup(s => s.LogSecurityEventAsync(It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _controller.Login(request);
@@ -323,6 +375,8 @@ public class AuthControllerTests
     public async Task ResetPassword_ShouldReturnOk_WhenResetSucceeds()
     {
         // Arrange
+        SetupAuthenticatedUser("admin", Guid.NewGuid(), new List<string> { "Admin" });
+
         var userId = Guid.NewGuid();
         var request = new ResetPasswordRequest
         {
@@ -346,6 +400,8 @@ public class AuthControllerTests
     public async Task ResetPassword_ShouldReturnNotFound_WhenUserNotExists()
     {
         // Arrange
+        SetupAuthenticatedUser("admin", Guid.NewGuid(), new List<string> { "Admin" });
+
         var request = new ResetPasswordRequest
         {
             UserId = Guid.NewGuid(),
@@ -368,6 +424,8 @@ public class AuthControllerTests
     public async Task ResetPassword_ShouldReturnBadRequest_WhenPasswordInvalid()
     {
         // Arrange
+        SetupAuthenticatedUser("admin", Guid.NewGuid(), new List<string> { "Admin" });
+
         var request = new ResetPasswordRequest
         {
             UserId = Guid.NewGuid(),
@@ -390,6 +448,8 @@ public class AuthControllerTests
     public async Task ResetPassword_ShouldCallUserService_WithCorrectParameters()
     {
         // Arrange
+        SetupAuthenticatedUser("admin", Guid.NewGuid(), new List<string> { "Admin" });
+
         var userId = Guid.NewGuid();
         var request = new ResetPasswordRequest
         {
@@ -544,6 +604,8 @@ public class AuthControllerTests
     public async Task ResetPassword_ShouldReturnInternalServerError_WhenUnexpectedExceptionThrown()
     {
         // Arrange
+        SetupAuthenticatedUser("admin", Guid.NewGuid(), new List<string> { "Admin" });
+
         var request = new ResetPasswordRequest
         {
             UserId = Guid.NewGuid(),
@@ -560,6 +622,35 @@ public class AuthControllerTests
         // Assert
         var statusCodeResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(500, statusCodeResult.StatusCode);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private void SetupAuthenticatedUser(string username, Guid userId, List<string> roles)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+        };
+
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = claimsPrincipal
+            }
+        };
     }
 
     #endregion

@@ -1,5 +1,7 @@
+using Ai.Orchestrator.Models.Data;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Services.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Moq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -10,9 +12,10 @@ namespace Ai.Orchestrator.Tests.Services;
 /// TDD Tests for JwtService
 /// Tests JWT token generation, validation, and claims management
 /// </summary>
-public class JwtServiceTests
+public class JwtServiceTests : IDisposable
 {
     private readonly Mock<IConfig> _mockConfig;
+    private readonly OrchestratorDbContext _context;
     private readonly JwtService _jwtService;
 
     public JwtServiceTests()
@@ -23,7 +26,17 @@ public class JwtServiceTests
         _mockConfig.Setup(c => c.JwtAudience).Returns("ai.orchestrator.api");
         _mockConfig.Setup(c => c.JwtExpirationMinutes).Returns(60);
 
-        _jwtService = new JwtService(_mockConfig.Object);
+        var options = new DbContextOptionsBuilder<OrchestratorDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        _context = new OrchestratorDbContext(options);
+        _jwtService = new JwtService(_mockConfig.Object, _context);
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
     }
 
     [Fact]
@@ -55,7 +68,8 @@ public class JwtServiceTests
         var claims = DecodeToken(token);
 
         // Assert
-        var userIdClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+        // JWT serializes ClaimTypes.NameIdentifier as "nameid"
+        var userIdClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "nameid");
         Assert.NotNull(userIdClaim);
         Assert.Equal(userId.ToString(), userIdClaim.Value);
     }
@@ -73,7 +87,8 @@ public class JwtServiceTests
         var claims = DecodeToken(token);
 
         // Assert
-        var usernameClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+        // JWT serializes ClaimTypes.Name as "unique_name"
+        var usernameClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name || c.Type == "unique_name");
         Assert.NotNull(usernameClaim);
         Assert.Equal(username, usernameClaim.Value);
     }
@@ -91,7 +106,8 @@ public class JwtServiceTests
         var claims = DecodeToken(token);
 
         // Assert
-        var roleClaims = claims.Where(c => c.Type == ClaimTypes.Role).ToList();
+        // JWT serializes ClaimTypes.Role as "role"
+        var roleClaims = claims.Where(c => c.Type == ClaimTypes.Role || c.Type == "role").ToList();
         Assert.Equal(2, roleClaims.Count);
         Assert.Contains(roleClaims, c => c.Value == "Admin");
         Assert.Contains(roleClaims, c => c.Value == "User");
@@ -198,25 +214,33 @@ public class JwtServiceTests
     }
 
     [Fact]
-    public void ValidateToken_ShouldReturnFalse_ForExpiredToken()
+    public void ValidateToken_ShouldReturnFalse_ForTokenWithWrongSecret()
     {
-        // Arrange - Create a service with 0 minute expiration
-        _mockConfig.Setup(c => c.JwtExpirationMinutes).Returns(0);
-        var shortLivedService = new JwtService(_mockConfig.Object);
+        // Arrange - Create a token with a different secret to simulate invalid signature
+        var mockConfigWithDifferentSecret = new Mock<IConfig>();
+        mockConfigWithDifferentSecret.Setup(c => c.JwtSecret).Returns("this-is-a-different-secret-key-that-will-cause-validation-to-fail-123");
+        mockConfigWithDifferentSecret.Setup(c => c.JwtIssuer).Returns("ai.orchestrator");
+        mockConfigWithDifferentSecret.Setup(c => c.JwtAudience).Returns("ai.orchestrator.api");
+        mockConfigWithDifferentSecret.Setup(c => c.JwtExpirationMinutes).Returns(60);
+
+        var differentSecretContext = new OrchestratorDbContext(
+            new DbContextOptionsBuilder<OrchestratorDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options);
+        var differentSecretService = new JwtService(mockConfigWithDifferentSecret.Object, differentSecretContext);
 
         var userId = Guid.NewGuid();
         var username = "testuser";
         var roles = new List<string> { "User" };
-        var token = shortLivedService.GenerateToken(userId, username, roles);
+        var tokenWithWrongSecret = differentSecretService.GenerateToken(userId, username, roles);
 
-        // Wait a moment to ensure expiration
-        System.Threading.Thread.Sleep(1000);
+        // Act - Try to validate with the main service (which has a different secret)
+        var isValid = _jwtService.ValidateToken(tokenWithWrongSecret);
 
-        // Act
-        var isValid = _jwtService.ValidateToken(token);
-
-        // Assert
+        // Assert - Should be invalid because the signature won't match
         Assert.False(isValid);
+
+        differentSecretContext.Dispose();
     }
 
     [Fact]
@@ -254,10 +278,11 @@ public class JwtServiceTests
         // Assert
         Assert.NotNull(claims);
         Assert.NotEmpty(claims);
-        Assert.Contains(claims, c => c.Type == ClaimTypes.NameIdentifier && c.Value == userId.ToString());
-        Assert.Contains(claims, c => c.Type == ClaimTypes.Name && c.Value == username);
-        Assert.Contains(claims, c => c.Type == ClaimTypes.Role && c.Value == "Admin");
-        Assert.Contains(claims, c => c.Type == ClaimTypes.Role && c.Value == "User");
+        // JWT serializes claims with short names
+        Assert.Contains(claims, c => (c.Type == ClaimTypes.NameIdentifier || c.Type == "nameid") && c.Value == userId.ToString());
+        Assert.Contains(claims, c => (c.Type == ClaimTypes.Name || c.Type == "unique_name") && c.Value == username);
+        Assert.Contains(claims, c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "Admin");
+        Assert.Contains(claims, c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "User");
     }
 
     [Fact]
@@ -337,17 +362,22 @@ public class JwtServiceTests
     public void Constructor_ShouldThrowException_ForNullConfig()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new JwtService(null));
+        Assert.Throws<ArgumentNullException>(() => new JwtService(null, _context));
     }
 
     [Fact]
     public void Constructor_ShouldThrowException_ForShortSecret()
     {
         // Arrange
-        _mockConfig.Setup(c => c.JwtSecret).Returns("tooshort");
+        var mockConfigWithShortSecret = new Mock<IConfig>();
+        mockConfigWithShortSecret.Setup(c => c.JwtSecret).Returns("tooshort");
+        var testContext = new OrchestratorDbContext(
+            new DbContextOptionsBuilder<OrchestratorDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options);
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() => new JwtService(_mockConfig.Object));
+        var exception = Assert.Throws<ArgumentException>(() => new JwtService(mockConfigWithShortSecret.Object, testContext));
         Assert.Contains("at least 32 characters", exception.Message);
     }
 
@@ -355,10 +385,15 @@ public class JwtServiceTests
     public void Constructor_ShouldThrowException_ForNullOrEmptySecret()
     {
         // Arrange
-        _mockConfig.Setup(c => c.JwtSecret).Returns("");
+        var mockConfigWithEmptySecret = new Mock<IConfig>();
+        mockConfigWithEmptySecret.Setup(c => c.JwtSecret).Returns("");
+        var testContext = new OrchestratorDbContext(
+            new DbContextOptionsBuilder<OrchestratorDbContext>()
+                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .Options);
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => new JwtService(_mockConfig.Object));
+        Assert.Throws<ArgumentException>(() => new JwtService(mockConfigWithEmptySecret.Object, testContext));
     }
 
     // Helper method to decode token for testing

@@ -27,10 +27,14 @@ public class NotificationService : INotificationService
         {
             var config = new Config();
             _redisConversationSubject = "confirmation";
-            _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString, x=> x.AllowAdmin = true);   
+            _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString, x=> x.AllowAdmin = true);
         }
 
-        _plugin = pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
+        // Only load plugin if ConfirmationPlugin is configured
+        if (!string.IsNullOrEmpty(_config.ConfirmationPlugin))
+        {
+            _plugin = pluginService.GetPlugin<INotificationPlugin>(_config.ConfirmationPlugin);
+        }
     }
 
     public async Task<object> SendNotification(string message)

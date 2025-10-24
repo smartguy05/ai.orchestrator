@@ -1,4 +1,5 @@
 using Ai.Orchestrator.Controllers;
+using Ai.Orchestrator.Models.DTOs.Agents;
 using Ai.Orchestrator.Models.DTOs.PluginConfigs;
 using Ai.Orchestrator.Models.Interfaces;
 using Microsoft.AspNetCore.Mvc;

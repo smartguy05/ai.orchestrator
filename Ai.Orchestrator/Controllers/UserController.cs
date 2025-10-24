@@ -11,7 +11,7 @@ namespace Ai.Orchestrator.Controllers;
 /// Handles CRUD operations and role assignment for users
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/users")]
 [Authorize]
 public class UserController : ControllerBase
 {

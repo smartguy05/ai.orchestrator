@@ -42,9 +42,10 @@ public class HealthCheckController : ControllerBase
             })
         };
 
-        return healthReport.Status == HealthStatus.Healthy
-            ? Ok(response)
-            : StatusCode(503, response); // Service Unavailable
+        // Healthy and Degraded return 200 OK, Unhealthy returns 503
+        return healthReport.Status == HealthStatus.Unhealthy
+            ? StatusCode(503, response) // Service Unavailable
+            : Ok(response);
     }
 
     /// <summary>

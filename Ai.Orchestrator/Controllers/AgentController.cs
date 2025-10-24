@@ -11,7 +11,7 @@ namespace Ai.Orchestrator.Controllers;
 /// Handles CRUD operations for AI agents with ownership validation
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/agents")]
 [Authorize]
 public class AgentController : ControllerBase
 {

@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <OutputPath>..\..\Ai.Orchestrator\bin\Debug\net8.0\Plugins\</OutputPath>
+      <OutputPath>..\..\Ai.Orchestrator\bin\Debug\net9.0\Plugins\</OutputPath>
     </PropertyGroup>
 
     <PropertyGroup>

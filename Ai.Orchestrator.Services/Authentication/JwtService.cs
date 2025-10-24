@@ -123,7 +123,8 @@ public class JwtService : IJwtService
     public Guid? GetUserIdFromToken(string token)
     {
         var claims = GetClaims(token);
-        var userIdClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+        // Check both the full claim type URI and the short JWT name
+        var userIdClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "nameid");
 
         if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
         {
@@ -136,7 +137,8 @@ public class JwtService : IJwtService
     public string GetUsernameFromToken(string token)
     {
         var claims = GetClaims(token);
-        var usernameClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+        // Check both the full claim type URI and the short JWT name
+        var usernameClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name || c.Type == "unique_name");
         return usernameClaim?.Value;
     }
 

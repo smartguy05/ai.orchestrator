@@ -482,22 +482,22 @@ public class OrchestratorDbContext : DbContext
     {
         // Seed default roles
         modelBuilder.Entity<Role>().HasData(
-            new Role { Id = 1, Name = Roles.Admin, Description = "Full system access, can reset passwords, manage all users" },
-            new Role { Id = 2, Name = Roles.AgentManager, Description = "Can create and manage agents and configurations" },
-            new Role { Id = 3, Name = Roles.User, Description = "Basic access, can create own agents" },
-            new Role { Id = 4, Name = Roles.ReadOnly, Description = "View-only access" }
+            new Role { Id = 1, Name = Entities.Roles.Admin, Description = "Full system access, can reset passwords, manage all users" },
+            new Role { Id = 2, Name = Entities.Roles.AgentManager, Description = "Can create and manage agents and configurations" },
+            new Role { Id = 3, Name = Entities.Roles.User, Description = "Basic access, can create own agents" },
+            new Role { Id = 4, Name = Entities.Roles.ReadOnly, Description = "View-only access" }
         );
 
         // Seed default permissions
         modelBuilder.Entity<Permission>().HasData(
-            new Permission { Id = 1, Name = Permissions.ManageUsers, Description = "Create, update, delete users" },
-            new Permission { Id = 2, Name = Permissions.ResetPasswords, Description = "Reset user passwords" },
-            new Permission { Id = 3, Name = Permissions.CreateAgents, Description = "Create new agents" },
-            new Permission { Id = 4, Name = Permissions.UpdateAgents, Description = "Modify agent configurations" },
-            new Permission { Id = 5, Name = Permissions.DeleteAgents, Description = "Delete agents" },
-            new Permission { Id = 6, Name = Permissions.ViewAgents, Description = "View agent configurations" },
-            new Permission { Id = 7, Name = Permissions.ManagePluginConfigs, Description = "Manage plugin configurations" },
-            new Permission { Id = 8, Name = Permissions.ViewPluginConfigs, Description = "View plugin configurations" }
+            new Permission { Id = 1, Name = Entities.Permissions.ManageUsers, Description = "Create, update, delete users" },
+            new Permission { Id = 2, Name = Entities.Permissions.ResetPasswords, Description = "Reset user passwords" },
+            new Permission { Id = 3, Name = Entities.Permissions.CreateAgents, Description = "Create new agents" },
+            new Permission { Id = 4, Name = Entities.Permissions.UpdateAgents, Description = "Modify agent configurations" },
+            new Permission { Id = 5, Name = Entities.Permissions.DeleteAgents, Description = "Delete agents" },
+            new Permission { Id = 6, Name = Entities.Permissions.ViewAgents, Description = "View agent configurations" },
+            new Permission { Id = 7, Name = Entities.Permissions.ManagePluginConfigs, Description = "Manage plugin configurations" },
+            new Permission { Id = 8, Name = Entities.Permissions.ViewPluginConfigs, Description = "View plugin configurations" }
         );
 
         // Seed default role-permission mappings

@@ -26,6 +26,9 @@ public class DatabaseSeederServiceTests : IDisposable
 
         _context = new OrchestratorDbContext(options);
 
+        // Ensure database is created with seed data from OnModelCreating
+        _context.Database.EnsureCreated();
+
         _mockConfig = new Mock<IConfig>();
         _mockConfig.Setup(c => c.AdminUsername).Returns("admin");
         _mockConfig.Setup(c => c.AdminPassword).Returns("Admin@123456");

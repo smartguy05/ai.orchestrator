@@ -29,10 +29,20 @@ public static class MiddlewareRegistration
         // Register configuration
         services.AddSingleton<IConfig, Models.Configuration.Config>();
 
-        // Register database context
+        // Create config instance for use throughout middleware registration
         var config = new Models.Configuration.Config();
-        services.AddDbContext<OrchestratorDbContext>(options =>
-            options.UseNpgsql(config.PostgresConnectionString));
+
+        // Register database context (only if NOT in test environment)
+        // Integration tests set IS_INTEGRATION_TEST=true and register their own InMemory database
+        var isIntegrationTest = Environment.GetEnvironmentVariable("IS_INTEGRATION_TEST") == "true";
+
+        if (!isIntegrationTest)
+        {
+            // Production/Development environment - register PostgreSQL
+            services.AddDbContext<OrchestratorDbContext>(options =>
+                options.UseNpgsql(config.PostgresConnectionString));
+        }
+        // In test environment, tests will register InMemory database themselves
 
         // Register new database-backed services
         services.AddScoped<IUserService, UserService>();

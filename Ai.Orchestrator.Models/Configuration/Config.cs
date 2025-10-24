@@ -14,7 +14,9 @@ public class Config: IConfig
     public string RedisConnectionString { get; set; }
     public string RedisConversationSubject { get; set; }
     public string LoggingPluginsString { get; set; }
-    public List<string> LoggingPlugins => LoggingPluginsString.Split(",").ToList();
+    public List<string> LoggingPlugins => string.IsNullOrEmpty(LoggingPluginsString)
+        ? new List<string>()
+        : LoggingPluginsString.Split(",", StringSplitOptions.RemoveEmptyEntries).ToList();
     public bool LogToConsole { get; set; }
 
     // Database configuration
