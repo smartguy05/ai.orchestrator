@@ -1,5 +1,6 @@
 using Ai.Orchestrator.Models.DTOs.PluginConfigs;
 using Ai.Orchestrator.Models.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -14,6 +15,7 @@ namespace Ai.Orchestrator.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/plugin-configs")]
+[Authorize]
 public class PluginConfigController : ControllerBase
 {
     private readonly IPluginConfigurationService _pluginConfigService;

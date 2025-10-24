@@ -11,7 +11,12 @@ class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        // Add JSON options for controllers
+        builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.PropertyNamingPolicy = null; // Use PascalCase
+            });
         
         builder.Services
             .AddCors(options =>
@@ -59,9 +64,19 @@ class Program
         app.UseHttpLogging()
             .UseHttpsRedirection()
             .UseCors("AllowLocalhost")
+            .UseAuthentication()  // Add authentication BEFORE authorization
             .UseAuthorization();
 
         app.MapControllers();
+
+        // Seed database with admin user
+        using (var scope = app.Services.CreateScope())
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeederService>();
+            await loggingService.Log(LogLevel.Info, "Seeding database with admin user");
+            await seeder.SeedAsync();
+            await loggingService.Log(LogLevel.Info, "Database seeding completed");
+        }
 
         try
         {

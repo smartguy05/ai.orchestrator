@@ -1,5 +1,6 @@
 using Ai.Orchestrator.Models.DTOs.Users;
 using Ai.Orchestrator.Models.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -11,6 +12,7 @@ namespace Ai.Orchestrator.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;

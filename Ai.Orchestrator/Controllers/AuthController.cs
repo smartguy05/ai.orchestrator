@@ -1,5 +1,6 @@
 using Ai.Orchestrator.Models.DTOs.Auth;
 using Ai.Orchestrator.Models.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ai.Orchestrator.Controllers;
@@ -89,6 +90,7 @@ public class AuthController : ControllerBase
     /// Reset a user's password (admin only)
     /// </summary>
     [HttpPost("reset-password")]
+    [Authorize(Policy = "Admin")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
         try
