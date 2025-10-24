@@ -12,10 +12,12 @@ namespace Ai.Orchestrator.Services.Agents;
 public class AgentConfigurationService : IAgentConfigurationService
 {
     private readonly OrchestratorDbContext _context;
+    private readonly AgentServiceManager _agentServiceManager;
 
-    public AgentConfigurationService(OrchestratorDbContext context)
+    public AgentConfigurationService(OrchestratorDbContext context, AgentServiceManager agentServiceManager)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _agentServiceManager = agentServiceManager ?? throw new ArgumentNullException(nameof(agentServiceManager));
     }
 
     public async Task<AgentDto> CreateAgentAsync(Guid userId, CreateAgentRequest request)
@@ -77,6 +79,9 @@ public class AgentConfigurationService : IAgentConfigurationService
         }
 
         await _context.SaveChangesAsync();
+
+        // Initialize services for the new agent
+        await _agentServiceManager.InitializeAgentServicesAsync(agent);
 
         return await GetAgentByIdAsync(agent.Id, userId);
     }
@@ -218,6 +223,9 @@ public class AgentConfigurationService : IAgentConfigurationService
         agent.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        // Reinitialize services for the updated agent
+        await _agentServiceManager.InitializeAgentServicesAsync(agent);
+
         return await GetAgentByIdAsync(agentId, userId);
     }
 
@@ -274,6 +282,9 @@ public class AgentConfigurationService : IAgentConfigurationService
             throw new UnauthorizedAccessException("You do not have permission to deactivate this agent");
         }
 
+        // Remove services for the deactivated agent
+        await _agentServiceManager.RemoveAgentServicesAsync(agentId);
+
         agent.IsActive = false;
         agent.UpdatedAt = DateTime.UtcNow;
 
@@ -294,6 +305,9 @@ public class AgentConfigurationService : IAgentConfigurationService
         {
             throw new UnauthorizedAccessException("You do not have permission to delete this agent");
         }
+
+        // Remove services for the deleted agent
+        await _agentServiceManager.RemoveAgentServicesAsync(agentId);
 
         _context.Agents.Remove(agent);
         await _context.SaveChangesAsync();
