@@ -21,6 +21,7 @@ public class OrchestratorDbContext : DbContext
     public DbSet<Agent> Agents { get; set; }
     public DbSet<PluginConfiguration> PluginConfigurations { get; set; }
     public DbSet<AgentTool> AgentTools { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,7 @@ public class OrchestratorDbContext : DbContext
         ConfigureAgent(modelBuilder);
         ConfigurePluginConfiguration(modelBuilder);
         ConfigureAgentTool(modelBuilder);
+        ConfigureAuditLog(modelBuilder);
         SeedDefaultData(modelBuilder);
     }
 
@@ -342,6 +344,67 @@ public class OrchestratorDbContext : DbContext
                 .WithMany(a => a.AgentTools)
                 .HasForeignKey(e => e.AgentId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private void ConfigureAuditLog(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Username)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Action)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.EntityType)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.UserAgent)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.Details)
+                .HasMaxLength(10000);
+
+            entity.Property(e => e.Outcome)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Timestamp)
+                .IsRequired();
+
+            entity.Property(e => e.HttpMethod)
+                .HasMaxLength(10);
+
+            entity.Property(e => e.RequestPath)
+                .HasMaxLength(500);
+
+            // Indexes for common queries
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("idx_auditlogs_userid");
+
+            entity.HasIndex(e => e.Action)
+                .HasDatabaseName("idx_auditlogs_action");
+
+            entity.HasIndex(e => e.Timestamp)
+                .HasDatabaseName("idx_auditlogs_timestamp");
+
+            entity.HasIndex(e => new { e.EntityType, e.EntityId })
+                .HasDatabaseName("idx_auditlogs_entity");
+
+            entity.HasIndex(e => e.Outcome)
+                .HasDatabaseName("idx_auditlogs_outcome");
+
+            // Relationship to User (optional, audit logs can exist without user)
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 
