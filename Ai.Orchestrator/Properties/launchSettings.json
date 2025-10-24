@@ -19,6 +19,7 @@
         "JwtIssuer": "ai.orchestrator",
         "JwtAudience": "ai.orchestrator.api",
         "JwtExpirationMinutes": "1440",
+        "RefreshTokenExpirationDays": "30",
         "AdminUsername": "admin",
         "AdminPassword": "Admin@123456",
         "LoggingPluginsString": "Ai.Orchestrator.Logging.FileLogger",

@@ -6,6 +6,7 @@ namespace Ai.Orchestrator.Models.DTOs.Auth;
 /// <example>
 /// {
 ///   "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+///   "RefreshToken": "a1b2c3d4e5f6...",
 ///   "Username": "john.doe",
 ///   "Email": "john.doe@example.com",
 ///   "Roles": ["User"],
@@ -18,6 +19,11 @@ public class LoginResponse
     /// JWT token for authentication (use in Authorization header as "Bearer {token}")
     /// </summary>
     public string Token { get; set; }
+
+    /// <summary>
+    /// Refresh token for obtaining new access tokens without re-authenticating
+    /// </summary>
+    public string RefreshToken { get; set; }
 
     /// <summary>
     /// Username of the authenticated user

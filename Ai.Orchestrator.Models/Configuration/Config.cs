@@ -26,6 +26,9 @@ public class Config: IConfig
     public string JwtAudience { get; set; }
     public int JwtExpirationMinutes { get; set; }
 
+    // Refresh token configuration
+    public int RefreshTokenExpirationDays { get; set; }
+
     // Admin user configuration
     public string AdminUsername { get; set; }
     public string AdminPassword { get; set; }

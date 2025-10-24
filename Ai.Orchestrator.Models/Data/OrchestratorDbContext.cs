@@ -22,6 +22,7 @@ public class OrchestratorDbContext : DbContext
     public DbSet<PluginConfiguration> PluginConfigurations { get; set; }
     public DbSet<AgentTool> AgentTools { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,7 @@ public class OrchestratorDbContext : DbContext
         ConfigurePluginConfiguration(modelBuilder);
         ConfigureAgentTool(modelBuilder);
         ConfigureAuditLog(modelBuilder);
+        ConfigureRefreshToken(modelBuilder);
         SeedDefaultData(modelBuilder);
     }
 
@@ -404,6 +406,74 @@ public class OrchestratorDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+    }
+
+    private void ConfigureRefreshToken(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Token)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.JwtId)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.IpAddress)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.UserAgent)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.RevokedReason)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.IsUsed)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.IsRevoked)
+                .IsRequired()
+                .HasDefaultValue(false);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.Property(e => e.ExpiresAt)
+                .IsRequired();
+
+            // Indexes for common queries
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("idx_refreshtokens_userid");
+
+            entity.HasIndex(e => e.Token)
+                .IsUnique()
+                .HasDatabaseName("idx_refreshtokens_token");
+
+            entity.HasIndex(e => e.JwtId)
+                .HasDatabaseName("idx_refreshtokens_jwtid");
+
+            entity.HasIndex(e => e.ExpiresAt)
+                .HasDatabaseName("idx_refreshtokens_expiresat");
+
+            entity.HasIndex(e => new { e.IsRevoked, e.IsUsed, e.ExpiresAt })
+                .HasDatabaseName("idx_refreshtokens_validity");
+
+            // Relationship to User
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Self-referencing relationship for token rotation chain
+            entity.HasOne(e => e.ReplacedByToken)
+                .WithMany()
+                .HasForeignKey(e => e.ReplacedByTokenId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
     }
