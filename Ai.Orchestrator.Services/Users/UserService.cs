@@ -132,6 +132,47 @@ public class UserService : IUserService
         return users.Select(MapToDto).ToList();
     }
 
+    public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID '{userId}' not found");
+        }
+
+        // Update email if provided
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            // Validate email format
+            if (!IsValidEmail(request.Email))
+            {
+                throw new ArgumentException("Invalid email format", nameof(request.Email));
+            }
+
+            // Check for duplicate email
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email && u.Id != userId);
+
+            if (existingUser != null)
+            {
+                throw new InvalidOperationException($"Email '{request.Email}' is already registered");
+            }
+
+            user.Email = request.Email;
+        }
+
+        // Update IsActive if provided
+        if (request.IsActive.HasValue)
+        {
+            user.IsActive = request.IsActive.Value;
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await GetUserByIdAsync(userId);
+    }
+
     public async Task<UserDto> UpdateUserEmailAsync(Guid userId, string newEmail)
     {
         // Validate email format
@@ -251,6 +292,52 @@ public class UserService : IUserService
             _context.Set<UserRole>().Remove(userRole);
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task AddRoleToUserAsync(Guid userId, Guid roleId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            throw new InvalidOperationException($"User with ID '{userId}' not found");
+        }
+
+        var role = await _context.Roles.FindAsync(roleId);
+        if (role == null)
+        {
+            throw new InvalidOperationException($"Role with ID '{roleId}' not found");
+        }
+
+        // Check if user already has this role
+        var existingUserRole = await _context.Set<UserRole>()
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+
+        if (existingUserRole != null)
+        {
+            throw new InvalidOperationException($"User already has this role");
+        }
+
+        _context.Set<UserRole>().Add(new UserRole
+        {
+            UserId = userId,
+            RoleId = roleId
+        });
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task RemoveRoleFromUserAsync(Guid userId, Guid roleId)
+    {
+        var userRole = await _context.Set<UserRole>()
+            .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == roleId);
+
+        if (userRole == null)
+        {
+            throw new InvalidOperationException($"User does not have this role");
+        }
+
+        _context.Set<UserRole>().Remove(userRole);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<List<string>> GetUserRolesAsync(Guid userId)

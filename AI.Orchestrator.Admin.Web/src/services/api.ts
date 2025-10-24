@@ -85,70 +85,76 @@ export const authApi = {
     api.post('/auth/revoke', { refreshToken }),
 };
 
-// Users API
+// Users API - Note: route is /user (singular)
 export const usersApi = {
   getAll: () =>
-    api.get<User[]>('/users'),
+    api.get<User[]>('/user'),
 
   getById: (id: string) =>
-    api.get<User>(`/users/${id}`),
+    api.get<User>(`/user/${id}`),
 
-  create: (data: RegisterRequest) =>
-    api.post<User>('/users', data),
-
-  update: (id: string, data: Partial<User>) =>
-    api.put<User>(`/users/${id}`, data),
+  update: (id: string, data: { email?: string; isActive?: boolean }) =>
+    api.put<User>(`/user/${id}`, data),
 
   delete: (id: string) =>
-    api.delete(`/users/${id}`),
+    api.delete(`/user/${id}`),
 
-  assignRole: (userId: string, roleName: string) =>
-    api.post(`/users/${userId}/roles/${roleName}`),
+  assignRole: (userId: string, roleId: string) =>
+    api.post(`/user/${userId}/roles/${roleId}`),
 
-  removeRole: (userId: string, roleName: string) =>
-    api.delete(`/users/${userId}/roles/${roleName}`),
+  removeRole: (userId: string, roleId: string) =>
+    api.delete(`/user/${userId}/roles/${roleId}`),
+
+  getUsersByRole: (roleId: string) =>
+    api.get<User[]>(`/user/by-role/${roleId}`),
 };
 
-// Agents API
+// Agents API - Note: route is /agent (singular)
 export const agentsApi = {
   getAll: () =>
-    api.get<Agent[]>('/agents'),
+    api.get<Agent[]>('/agent'),
 
   getById: (id: string) =>
-    api.get<Agent>(`/agents/${id}`),
+    api.get<Agent>(`/agent/${id}`),
 
   create: (data: CreateAgentRequest) =>
-    api.post<Agent>('/agents', data),
+    api.post<Agent>('/agent', data),
 
   update: (id: string, data: UpdateAgentRequest) =>
-    api.put<Agent>(`/agents/${id}`, data),
+    api.put<Agent>(`/agent/${id}`, data),
 
   delete: (id: string) =>
-    api.delete(`/agents/${id}`),
+    api.delete(`/agent/${id}`),
+
+  addTool: (id: string, toolName: string) =>
+    api.post(`/agent/${id}/tools/${toolName}`),
+
+  removeTool: (id: string, toolName: string) =>
+    api.delete(`/agent/${id}/tools/${toolName}`),
 };
 
-// Plugin Configurations API
+// Plugin Configurations API - Note: route is /plugin-configs (plural with dash)
 export const pluginConfigsApi = {
   getByAgent: (agentId: string) =>
-    api.get<PluginConfiguration[]>(`/pluginconfigs/agent/${agentId}`),
+    api.get<PluginConfiguration[]>(`/plugin-configs/agent/${agentId}`),
 
-  getByUser: (userId: string) =>
-    api.get<PluginConfiguration[]>(`/pluginconfigs/user/${userId}`),
+  getByAgentAndPlugin: (agentId: string, pluginName: string) =>
+    api.get<PluginConfiguration>(`/plugin-configs/agent/${agentId}/${pluginName}`),
 
-  getGlobal: () =>
-    api.get<PluginConfiguration[]>('/pluginconfigs/global'),
+  getDefaults: () =>
+    api.get<PluginConfiguration[]>('/plugin-configs/defaults'),
 
   getById: (id: string) =>
-    api.get<PluginConfiguration>(`/pluginconfigs/${id}`),
+    api.get<PluginConfiguration>(`/plugin-configs/${id}`),
 
   create: (data: CreatePluginConfigRequest) =>
-    api.post<PluginConfiguration>('/pluginconfigs', data),
+    api.post<PluginConfiguration>('/plugin-configs', data),
 
   update: (id: string, data: UpdatePluginConfigRequest) =>
-    api.put<PluginConfiguration>(`/pluginconfigs/${id}`, data),
+    api.put<PluginConfiguration>(`/plugin-configs/${id}`, data),
 
   delete: (id: string) =>
-    api.delete(`/pluginconfigs/${id}`),
+    api.delete(`/plugin-configs/${id}`),
 };
 
 // Audit Logs API (Admin only)

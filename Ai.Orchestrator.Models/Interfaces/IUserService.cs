@@ -50,6 +50,14 @@ public interface IUserService
     Task<List<UserDto>> GetAllUsersAsync();
 
     /// <summary>
+    /// Updates a user's information
+    /// </summary>
+    /// <param name="userId">User identifier</param>
+    /// <param name="request">Update request with email and/or isActive</param>
+    /// <returns>Updated user DTO</returns>
+    Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request);
+
+    /// <summary>
     /// Updates a user's email address
     /// </summary>
     /// <param name="userId">User identifier</param>
@@ -88,6 +96,20 @@ public interface IUserService
     /// <param name="userId">User identifier</param>
     /// <param name="roleName">Role name</param>
     Task RemoveRoleAsync(Guid userId, string roleName);
+
+    /// <summary>
+    /// Adds a role to a user by role ID
+    /// </summary>
+    /// <param name="userId">User identifier</param>
+    /// <param name="roleId">Role identifier</param>
+    Task AddRoleToUserAsync(Guid userId, Guid roleId);
+
+    /// <summary>
+    /// Removes a role from a user by role ID
+    /// </summary>
+    /// <param name="userId">User identifier</param>
+    /// <param name="roleId">Role identifier</param>
+    Task RemoveRoleFromUserAsync(Guid userId, Guid roleId);
 
     /// <summary>
     /// Gets all roles for a user

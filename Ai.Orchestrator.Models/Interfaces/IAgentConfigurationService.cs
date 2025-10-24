@@ -31,6 +31,13 @@ public interface IAgentConfigurationService
     Task<List<AgentDto>> GetUserAgentsAsync(Guid userId);
 
     /// <summary>
+    /// Gets all agents for a user (alias for GetUserAgentsAsync)
+    /// </summary>
+    /// <param name="userId">User identifier</param>
+    /// <returns>List of agent DTOs</returns>
+    Task<List<AgentDto>> GetAllAgentsAsync(Guid userId);
+
+    /// <summary>
     /// Gets the default agent for a user
     /// </summary>
     /// <param name="userId">User identifier</param>
@@ -90,6 +97,22 @@ public interface IAgentConfigurationService
     /// <param name="userId">User identifier</param>
     /// <param name="toolName">Tool name</param>
     Task DisableToolAsync(Guid agentId, Guid userId, string toolName);
+
+    /// <summary>
+    /// Adds a tool to an agent (alias for EnableToolAsync)
+    /// </summary>
+    /// <param name="agentId">Agent identifier</param>
+    /// <param name="toolName">Tool name</param>
+    /// <param name="userId">User identifier</param>
+    Task AddToolToAgentAsync(Guid agentId, string toolName, Guid userId);
+
+    /// <summary>
+    /// Removes a tool from an agent (alias for DisableToolAsync)
+    /// </summary>
+    /// <param name="agentId">Agent identifier</param>
+    /// <param name="toolName">Tool name</param>
+    /// <param name="userId">User identifier</param>
+    Task RemoveToolFromAgentAsync(Guid agentId, string toolName, Guid userId);
 
     /// <summary>
     /// Checks if an agent exists

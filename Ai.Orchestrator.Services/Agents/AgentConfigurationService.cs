@@ -371,6 +371,21 @@ public class AgentConfigurationService : IAgentConfigurationService
         return agent != null && agent.OwnerId == userId;
     }
 
+    public async Task<List<AgentDto>> GetAllAgentsAsync(Guid userId)
+    {
+        return await GetUserAgentsAsync(userId);
+    }
+
+    public async Task AddToolToAgentAsync(Guid agentId, string toolName, Guid userId)
+    {
+        await EnableToolAsync(agentId, userId, toolName);
+    }
+
+    public async Task RemoveToolFromAgentAsync(Guid agentId, string toolName, Guid userId)
+    {
+        await DisableToolAsync(agentId, userId, toolName);
+    }
+
     // Helper methods
 
     private AgentDto MapToDto(Agent agent)
