@@ -45,6 +45,9 @@ public static class MiddlewareRegistration
         services.AddScoped<IDatabaseSeederService, DatabaseSeederService>();
         services.AddScoped<IAuditService, AuditService>();
 
+        // Register AgentServiceManager as singleton (manages per-agent service instances)
+        services.AddSingleton<AgentServiceManager>();
+
         // Register HttpContextAccessor for audit logging
         services.AddHttpContextAccessor();
 

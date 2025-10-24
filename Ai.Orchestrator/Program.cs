@@ -1,5 +1,6 @@
 using Ai.Orchestrator.Middleware;
 using Ai.Orchestrator.Models.Interfaces;
+using Ai.Orchestrator.Services.Agents;
 
 namespace Ai.Orchestrator;
 
@@ -104,6 +105,11 @@ public class Program
             var seeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeederService>();
             await seeder.SeedAsync();
         }
+
+        // Initialize per-agent services for all active agents
+        var agentServiceManager = app.Services.GetRequiredService<AgentServiceManager>();
+        await agentServiceManager.InitializeAllAgentsAsync();
+        Console.WriteLine("Agent services initialized for all active agents");
 
         await app.RunAsync();
     }   
