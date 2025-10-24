@@ -62,11 +62,6 @@ public class Agent
     public bool ToolsEnabled { get; set; } = true;
 
     /// <summary>
-    /// Comma-separated list of active plugin names for this agent
-    /// </summary>
-    public string ActivePlugins { get; set; }
-
-    /// <summary>
     /// Plugin to use for confirmation requests
     /// </summary>
     public string ConfirmationPlugin { get; set; }

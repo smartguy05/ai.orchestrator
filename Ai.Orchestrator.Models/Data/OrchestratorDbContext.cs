@@ -232,9 +232,6 @@ public class OrchestratorDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue(true);
 
-            entity.Property(e => e.ActivePlugins)
-                .HasMaxLength(1000);
-
             entity.Property(e => e.ConfirmationPlugin)
                 .HasMaxLength(200);
 
